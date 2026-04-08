@@ -1,0 +1,60 @@
+<div class="map-wrapper">
+  <!-- Top bar -->
+  <div class="map-topbar">
+    <span class="app-logo">SafeWalk</span>
+    <div class="topbar-actions">
+      <a routerLink="/report" class="btn-report">+ Report</a>
+      <a routerLink="/route"  class="btn-route">Safe Route</a>
+      <button class="btn-locate" (click)="centerOnUser()" title="My location">&#9678;</button>
+    </div>
+  </div>
+
+  <!-- Loading overlay -->
+  <div class="map-loading" *ngIf="loading">Loading safety data...</div>
+
+  <!-- Map container -->
+  <div id="safewalk-map"></div>
+
+  <!-- Legend -->
+  <div class="map-legend">
+    <div class="legend-row"><span class="dot" style="background:#1D9E75"></span> Safe (80–100)</div>
+    <div class="legend-row"><span class="dot" style="background:#EF9F27"></span> Moderate (55–79)</div>
+    <div class="legend-row"><span class="dot" style="background:#D85A30"></span> Caution (30–54)</div>
+    <div class="legend-row"><span class="dot" style="background:#E24B4A"></span> Danger (0–29)</div>
+  </div>
+
+  <!-- Street detail popup -->
+  <div class="street-popup" *ngIf="selectedStreet">
+    <button class="popup-close" (click)="selectedStreet = null">×</button>
+    <h3>{{ selectedStreet.street_name }}</h3>
+    <div class="score-badge" [style.background]="getScoreColor(selectedStreet.score)">
+      {{ selectedStreet.score }} / 100 — {{ getScoreLabel(selectedStreet.score) }}
+    </div>
+    <div class="popup-stats">
+      <div><label>Day score</label><span>{{ selectedStreet.score_day }}</span></div>
+      <div><label>Night score</label><span>{{ selectedStreet.score_night }}</span></div>
+      <div><label>Open reports</label><span>{{ selectedStreet.active_report_count }}</span></div>
+      <div><label>Trend</label><span>{{ selectedStreet.trend }}</span></div>
+    </div>
+    <div class="escalated-warning" *ngIf="selectedStreet.escalated">
+      ⚠ This zone is flagged and escalated to authorities
+    </div>
+    <a [routerLink]="['/report']" [queryParams]="{lat: selectedStreet.lat, lng: selectedStreet.lng, street: selectedStreet.street_name}"
+       class="btn-report-here">Report incident here</a>
+  </div>
+
+  <!-- Night mode warning banner -->
+  <div class="night-banner" *ngIf="isNight">
+    Night-time mode active — scores are weighted higher for safety
+  </div>
+
+  <!-- SOS Button -->
+  <button class="sos-btn" (click)="triggerSOS()" [disabled]="sosLoading">
+    {{ sosLoading ? '...' : 'SOS' }}
+  </button>
+
+  <!-- SOS success toast -->
+  <div class="sos-toast" *ngIf="sosSuccess">
+    SOS sent! Emergency contacts notified with your location.
+  </div>
+</div>

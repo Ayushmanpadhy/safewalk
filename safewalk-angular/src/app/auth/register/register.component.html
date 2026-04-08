@@ -1,0 +1,32 @@
+<div class="auth-container">
+  <div class="auth-card">
+    <div class="brand">
+      <span class="brand-icon">SW</span>
+      <h1>Join SafeWalk</h1>
+      <p>Help make streets safer for everyone</p>
+    </div>
+    <form (ngSubmit)="onSubmit()">
+      <div class="form-group">
+        <label>Full name</label>
+        <input type="text" [(ngModel)]="form.name" name="name" placeholder="Your name" required />
+      </div>
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" [(ngModel)]="form.email" name="email" placeholder="you@email.com" required />
+      </div>
+      <div class="form-group">
+        <label>Phone (for SOS)</label>
+        <input type="tel" [(ngModel)]="form.phone" name="phone" placeholder="+91 9999999999" />
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" [(ngModel)]="form.password" name="password" placeholder="Min 8 characters" required />
+      </div>
+      <div class="error-msg" *ngIf="error">{{ error }}</div>
+      <button type="submit" class="btn-primary" [disabled]="loading">
+        {{ loading ? 'Creating account...' : 'Create Account' }}
+      </button>
+    </form>
+    <p class="auth-link">Already have an account? <a routerLink="/login">Login</a></p>
+  </div>
+</div>

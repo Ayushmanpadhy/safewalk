@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Admin — SafeWalk</title>
+<link rel="stylesheet" href="../css/style.css"/>
+<style>
+html,body{height:100%;overflow:hidden;}
+.adm{display:flex;height:100vh;}
+.sidebar{width:220px;background:var(--white);border-right:1px solid var(--border);padding:1.25rem 1rem;display:flex;flex-direction:column;gap:2px;flex-shrink:0;box-shadow:1px 0 4px rgba(32,33,36,.06);}
+.sb-logo{display:flex;align-items:center;gap:9px;margin-bottom:1.5rem;padding:2px 6px;}
+.sb-logo-mark{width:32px;height:32px;background:var(--red);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;}
+.sb-logo-name{font-size:16px;font-weight:700;color:var(--text);}
+.sb-nav-btn{background:none;border:none;color:var(--text2);padding:10px 12px;border-radius:10px;text-align:left;cursor:pointer;font-size:13px;font-weight:500;width:100%;font-family:var(--font);transition:all .14s;display:flex;align-items:center;gap:9px;}
+.sb-nav-btn:hover{background:var(--bg);color:var(--text);}
+.sb-nav-btn.active{background:rgba(229,57,53,.07);color:var(--red);font-weight:600;}
+.sb-divider{height:1px;background:var(--border);margin:8px 0;}
+.sb-bottom{margin-top:auto;display:flex;flex-direction:column;gap:2px;}
+.content{flex:1;overflow-y:auto;background:var(--bg);}
+.ci{padding:1.75rem;}
+.page-h{font-size:22px;font-weight:700;color:var(--text);margin-bottom:1.5rem;letter-spacing:-.02em;}
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;margin-bottom:2rem;}
+.stat-card{background:var(--white);border:1px solid var(--border);border-radius:14px;padding:1.1rem;box-shadow:0 1px 3px rgba(32,33,36,.06);}
+.stat-val{font-size:32px;font-weight:700;color:var(--text);line-height:1;font-variant-numeric:tabular-nums;}
+.stat-val.red{color:var(--red);}
+.stat-val.green{color:var(--safe);}
+.stat-lbl{font-size:11px;color:var(--text3);margin-top:6px;text-transform:uppercase;letter-spacing:.05em;}
+.sec-h{font-size:13px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px;}
+.bar-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;font-size:13px;}
+.bar-label{width:180px;flex-shrink:0;color:var(--text2);}
+.bar-track{flex:1;background:var(--border);border-radius:4px;height:7px;overflow:hidden;}
+.bar-fill{height:100%;background:var(--red);border-radius:4px;transition:width .5s ease;}
+.bar-count{font-size:12px;color:var(--text3);width:28px;text-align:right;font-weight:500;}
+.table-wrap{background:var(--white);border:1px solid var(--border);border-radius:14px;overflow:hidden;box-shadow:0 1px 3px rgba(32,33,36,.06);margin-bottom:1.5rem;}
+.adm-table{width:100%;border-collapse:collapse;font-size:13px;}
+.adm-table th{background:var(--bg);padding:11px 14px;text-align:left;font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--border);}
+.adm-table td{padding:11px 14px;border-bottom:1px solid var(--border);color:var(--text2);vertical-align:middle;}
+.adm-table tr:last-child td{border-bottom:none;}
+.adm-table tr:hover td{background:var(--bg);}
+.sev-pill{padding:3px 9px;border-radius:20px;font-size:11px;font-weight:600;}
+.score-pill{padding:3px 10px;border-radius:20px;font-size:12px;font-weight:700;}
+.resolve-btn{background:rgba(13,158,92,.08);border:1px solid rgba(13,158,92,.25);color:var(--safe);padding:6px 14px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;font-family:var(--font);transition:all .14s;}
+.resolve-btn:hover{background:rgba(13,158,92,.15);}
+.hotspot-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(185px,1fr));gap:12px;}
+.hs-card{background:var(--white);border:1px solid var(--border);border-radius:14px;padding:1.1rem;position:relative;box-shadow:0 1px 3px rgba(32,33,36,.06);transition:box-shadow .15s;}
+.hs-card:hover{box-shadow:var(--sh);}
+.hs-score{font-size:40px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums;}
+.hs-name{font-size:13px;font-weight:600;color:var(--text);margin:6px 0 3px;line-height:1.3;}
+.hs-meta{font-size:11px;color:var(--text3);}
+.esc-badge{position:absolute;top:10px;right:10px;background:rgba(229,57,53,.08);border:1px solid rgba(229,57,53,.2);color:var(--red);font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;}
+.empty{text-align:center;padding:3rem;color:var(--text3);font-size:14px;}
+.photo-link{color:var(--red);font-size:12px;font-weight:500;}
+</style>
+</head>
+<body>
+<div class="adm">
+  <div class="sidebar">
+    <div class="sb-logo">
+      <div class="sb-logo-mark">SW</div>
+      <span class="sb-logo-name">SafeWalk</span>
+    </div>
+    <button class="sb-nav-btn active" onclick="showTab('dashboard',this)">&#9632; Dashboard</button>
+    <button class="sb-nav-btn"        onclick="showTab('reports',this)">&#128466; Open Reports</button>
+    <button class="sb-nav-btn"        onclick="showTab('hotspots',this)">&#128293; Hotspots</button>
+    <div class="sb-divider"></div>
+    <div class="sb-bottom">
+      <a href="map.html" class="sb-nav-btn" style="text-decoration:none;">&#8592; Back to Map</a>
+      <button class="sb-nav-btn" onclick="doLogout()" style="color:var(--red);">&#128682; Sign out</button>
+    </div>
+  </div>
+
+  <div class="content">
+    <!-- DASHBOARD -->
+    <div id="tab-dashboard" class="ci">
+      <div class="page-h">Dashboard</div>
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-val" id="st-total">—</div><div class="stat-lbl">Total reports</div></div>
+        <div class="stat-card"><div class="stat-val red" id="st-open">—</div><div class="stat-lbl">Open reports</div></div>
+        <div class="stat-card"><div class="stat-val" id="st-users">—</div><div class="stat-lbl">Users</div></div>
+        <div class="stat-card"><div class="stat-val red" id="st-danger">—</div><div class="stat-lbl">Danger streets</div></div>
+        <div class="stat-card"><div class="stat-val green" id="st-sos">—</div><div class="stat-lbl">SOS today</div></div>
+      </div>
+      <div class="sec-h">Incidents by type</div>
+      <div id="breakdownEl" style="margin-bottom:2rem;"></div>
+      <div class="sec-h">Worst streets right now</div>
+      <div class="table-wrap">
+        <table class="adm-table">
+          <thead><tr><th>Street name</th><th>Score</th><th>Open reports</th></tr></thead>
+          <tbody id="worstBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- REPORTS -->
+    <div id="tab-reports" class="ci" style="display:none;">
+      <div class="page-h" id="repTitle">Open Reports</div>
+      <div class="table-wrap">
+        <table class="adm-table">
+          <thead><tr><th>Street</th><th>Incident type</th><th>Severity</th><th>Reported at</th><th>Photo</th><th>Action</th></tr></thead>
+          <tbody id="reportsBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- HOTSPOTS -->
+    <div id="tab-hotspots" class="ci" style="display:none;">
+      <div class="page-h">Danger Hotspots</div>
+      <div class="hotspot-grid" id="hotspotsGrid"></div>
+    </div>
+  </div>
+</div>
+
+<script src="../js/api.js"></script>
+<script>
+redirectIfNotAuth();
+const u = getUser();
+if (!u || !['authority','admin'].includes(u.role)) window.location.href = 'map.html';
+
+function showTab(name, btn) {
+  ['dashboard','reports','hotspots'].forEach(t => {
+    document.getElementById('tab-' + t).style.display = t === name ? 'block' : 'none';
+  });
+  document.querySelectorAll('.sb-nav-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+}
+
+async function loadDash() {
+  try {
+    const d = await apiFetch('/admin/analytics');
+    const s = d.summary;
+    document.getElementById('st-total').textContent  = s.total_reports;
+    document.getElementById('st-open').textContent   = s.open_reports;
+    document.getElementById('st-users').textContent  = s.total_users;
+    document.getElementById('st-danger').textContent = s.danger_streets;
+    document.getElementById('st-sos').textContent    = s.sos_today;
+
+    const max = d.incident_breakdown[0]?.count || 1;
+    document.getElementById('breakdownEl').innerHTML = d.incident_breakdown.map(i => `
+      <div class="bar-row">
+        <span class="bar-label">${i.incident_type.replace(/_/g,' ')}</span>
+        <div class="bar-track"><div class="bar-fill" style="width:${(i.count/max*100).toFixed(0)}%"></div></div>
+        <span class="bar-count">${i.count}</span>
+      </div>`).join('');
+
+    document.getElementById('worstBody').innerHTML = d.worst_streets.map(s => {
+      const c = scoreColor(s.score);
+      return `<tr>
+        <td style="color:var(--text);font-weight:500;">${s.street_name}</td>
+        <td><span class="score-pill" style="background:${scoreBg(s.score)};color:${c};">${s.score}</span></td>
+        <td>${s.active_report_count}</td>
+      </tr>`;
+    }).join('');
+  } catch(e) { console.error(e); }
+}
+
+async function loadReports() {
+  try {
+    const d = await apiFetch('/admin/reports?resolved=false&limit=100');
+    document.getElementById('repTitle').textContent = `Open Reports (${d.reports.length})`;
+    const sevLabels = ['','Low','Minor','Moderate','High','Critical'];
+    const sevStyles = [
+      '','background:var(--bg);color:var(--text3)',
+      'background:rgba(217,119,6,.08);color:#D97706',
+      'background:rgba(220,78,18,.08);color:#DC4E12',
+      'background:rgba(229,57,53,.08);color:var(--red)',
+      'background:rgba(196,23,23,.1);color:#C41717'
+    ];
+    document.getElementById('reportsBody').innerHTML = d.reports.length
+      ? d.reports.map(r => `
+          <tr id="row-${r.id}">
+            <td style="color:var(--text);font-weight:500;">${r.street_name}</td>
+            <td>${r.incident_type.replace(/_/g,' ')}</td>
+            <td><span class="sev-pill" style="${sevStyles[r.severity]||sevStyles[1]}">${sevLabels[r.severity]||'Low'}</span></td>
+            <td>${new Date(r.reported_at).toLocaleString('en-IN',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}</td>
+            <td>${r.photo_url ? `<a class="photo-link" href="${window.API_BASE}${r.photo_url}" target="_blank">View photo</a>` : '<span style="color:var(--text3)">None</span>'}</td>
+            <td><button class="resolve-btn" onclick="resolveReport(${r.id})">Resolve</button></td>
+          </tr>`).join('')
+      : '<tr><td colspan="6" class="empty">No open reports right now</td></tr>';
+  } catch(e) { console.error(e); }
+}
+
+async function loadHotspots() {
+  try {
+    const d = await apiFetch('/admin/hotspots');
+    document.getElementById('hotspotsGrid').innerHTML = d.hotspots.length
+      ? d.hotspots.map(h => `
+          <div class="hs-card">
+            <div class="hs-score" style="color:${scoreColor(h.score)};">${h.score}</div>
+            <div class="hs-name">${h.street_name}</div>
+            <div class="hs-meta">${h.open_reports || 0} open reports</div>
+            ${h.escalated ? '<div class="esc-badge">Escalated</div>' : ''}
+          </div>`).join('')
+      : '<div class="empty">No danger hotspots right now</div>';
+  } catch(e) { console.error(e); }
+}
+
+async function resolveReport(id) {
+  try {
+    await apiFetch(`/admin/reports/${id}/resolve`, { method: 'PATCH' });
+    document.getElementById('row-' + id)?.remove();
+    showToast('Report resolved', 'ok');
+    loadDash();
+  } catch(e) { showToast(e.message, 'err'); }
+}
+
+function doLogout() { clearSession(); location.href = 'login.html'; }
+
+loadDash(); loadReports(); loadHotspots();
+</script>
+</body>
+</html>

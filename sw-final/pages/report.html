@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Report Incident — SafeWalk</title>
+<link rel="stylesheet" href="../css/style.css"/>
+<style>
+.page-shell { min-height:100vh; background:var(--bg); }
+.topbar { background:var(--white); border-bottom:1px solid var(--border); padding:14px 20px; display:flex; align-items:center; gap:12px; position:sticky; top:0; z-index:100; box-shadow:0 1px 4px rgba(32,33,36,.08); }
+.back-link { display:flex; align-items:center; gap:6px; color:var(--text2); font-size:13px; padding:7px 12px; border-radius:8px; border:1px solid var(--border2); background:var(--white); transition:all .15s; cursor:pointer; text-decoration:none; }
+.back-link:hover { border-color:#4285F4; color:#4285F4; }
+.page-title { font-size:16px; font-weight:700; color:var(--text); }
+.page-body { max-width:600px; margin:0 auto; padding:2rem 1.25rem 3rem; }
+.section-label { font-size:12px; font-weight:600; color:var(--text2); text-transform:uppercase; letter-spacing:.06em; margin-bottom:10px; }
+
+/* TYPE TILES */
+.type-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:10px; }
+.type-tile { padding:13px 12px; border:2px solid var(--border2); border-radius:12px; background:var(--white); font-size:13px; color:var(--text2); text-align:left; cursor:pointer; transition:all .16s; display:flex; align-items:center; gap:10px; }
+.type-tile:hover { border-color:#4285F4; color:var(--text); }
+.type-tile.selected { border-color:var(--red); background:rgba(229,57,53,.04); color:var(--text); }
+.tile-ico { font-size:20px; flex-shrink:0; }
+.tile-name { font-weight:600; font-size:13px; }
+.tile-sev  { font-size:11px; color:var(--text3); margin-top:1px; }
+
+/* PHOTO ZONE */
+.photo-zone { border:2px dashed var(--border2); border-radius:14px; padding:2rem 1.5rem; text-align:center; cursor:pointer; background:var(--white); transition:all .18s; position:relative; overflow:hidden; }
+.photo-zone:hover { border-color:#4285F4; background:#fafbff; }
+.photo-zone.has-photo { border-style:solid; border-color:var(--red); }
+.photo-zone input { position:absolute; inset:0; opacity:0; cursor:pointer; width:100%; height:100%; }
+.pz-icon { font-size:36px; margin-bottom:.75rem; }
+.pz-title { font-size:14px; font-weight:600; color:var(--text2); }
+.pz-sub   { font-size:12px; color:var(--text3); margin-top:.3rem; }
+.pz-req   { font-size:12px; color:var(--red); font-weight:500; margin-top:.5rem; }
+.photo-preview { width:100%; max-height:220px; object-fit:cover; border-radius:10px; display:none; margin-top:12px; border:1px solid var(--border); }
+
+/* GPS BUTTON */
+.gps-btn { width:100%; padding:11px; background:var(--white); border:2px solid var(--border2); border-radius:10px; color:var(--text2); font-size:13px; font-weight:500; font-family:var(--font); cursor:pointer; transition:all .15s; display:flex; align-items:center; justify-content:center; gap:8px; }
+.gps-btn:hover { border-color:#4285F4; color:#4285F4; }
+.gps-btn.captured { border-color:var(--safe); color:var(--safe); background:rgba(13,158,92,.04); }
+
+/* SECTION CARD */
+.section-card { background:var(--white); border:1px solid var(--border); border-radius:14px; padding:1.25rem; margin-bottom:1.5rem; }
+</style>
+</head>
+<body class="page-shell">
+
+<div class="topbar">
+  <a href="map.html" class="back-link">&#8592; Back to Map</a>
+  <span class="page-title">Report an Incident</span>
+</div>
+
+<div class="page-body">
+  <p style="font-size:14px;color:var(--text2);line-height:1.75;margin-bottom:1.5rem;">
+    Help keep streets safer by reporting what you see.
+    <strong style="color:var(--red);">A photo is required</strong> to verify every report and prevent fake submissions.
+  </p>
+
+  <div class="msg-err" id="errMsg"></div>
+  <div class="msg-ok"  id="okMsg">Report submitted successfully! Redirecting to map...</div>
+
+  <form id="reportForm">
+    <!-- INCIDENT TYPE -->
+    <div class="section-card">
+      <div class="section-label" style="margin-bottom:12px;">What happened? *</div>
+      <div class="type-grid">
+        <button type="button" class="type-tile" data-val="poor_lighting">
+          <span class="tile-ico">&#128294;</span>
+          <div><div class="tile-name">Poor Lighting</div><div class="tile-sev">Severity: Low</div></div>
+        </button>
+        <button type="button" class="type-tile" data-val="suspicious_person">
+          <span class="tile-ico">&#128373;</span>
+          <div><div class="tile-name">Suspicious Person</div><div class="tile-sev">Severity: Medium</div></div>
+        </button>
+        <button type="button" class="type-tile" data-val="harassment">
+          <span class="tile-ico">&#128227;</span>
+          <div><div class="tile-name">Harassment</div><div class="tile-sev">Severity: High</div></div>
+        </button>
+        <button type="button" class="type-tile" data-val="assault">
+          <span class="tile-ico">&#128680;</span>
+          <div><div class="tile-name">Assault</div><div class="tile-sev">Severity: Critical</div></div>
+        </button>
+        <button type="button" class="type-tile" data-val="eve_teasing">
+          <span class="tile-ico">&#128226;</span>
+          <div><div class="tile-name">Eve-Teasing</div><div class="tile-sev">Severity: High</div></div>
+        </button>
+        <button type="button" class="type-tile" data-val="theft_robbery">
+          <span class="tile-ico">&#128081;</span>
+          <div><div class="tile-name">Theft / Robbery</div><div class="tile-sev">Severity: High</div></div>
+        </button>
+        <button type="button" class="type-tile" data-val="drunk_crowd">
+          <span class="tile-ico">&#127867;</span>
+          <div><div class="tile-name">Drunk Crowd</div><div class="tile-sev">Severity: Low</div></div>
+        </button>
+        <button type="button" class="type-tile" data-val="broken_cctv">
+          <span class="tile-ico">&#128249;</span>
+          <div><div class="tile-name">Broken CCTV</div><div class="tile-sev">Severity: Low</div></div>
+        </button>
+        <button type="button" class="type-tile" data-val="isolated_road">
+          <span class="tile-ico">&#128738;</span>
+          <div><div class="tile-name">Isolated Road</div><div class="tile-sev">Severity: Low</div></div>
+        </button>
+        <button type="button" class="type-tile" data-val="general_unsafe">
+          <span class="tile-ico">&#9888;</span>
+          <div><div class="tile-name">General Unsafe</div><div class="tile-sev">Severity: Low</div></div>
+        </button>
+      </div>
+      <input type="hidden" id="incidentType"/>
+    </div>
+
+    <!-- PHOTO — REQUIRED -->
+    <div class="section-card">
+      <div class="section-label">Photo Evidence <span style="color:var(--red);">* Required</span></div>
+      <div class="photo-zone" id="photoZone">
+        <input type="file" id="photoInput" accept="image/*" onchange="handlePhoto(this)" required/>
+        <div class="pz-icon">&#128247;</div>
+        <div class="pz-title">Tap to take or upload a photo</div>
+        <div class="pz-sub">JPEG, PNG — max 5 MB</div>
+        <div class="pz-req">&#9888; Photo is required — reports without photo will not be submitted</div>
+      </div>
+      <img id="photoPreview" class="photo-preview" alt="Preview"/>
+    </div>
+
+    <!-- LOCATION -->
+    <div class="section-card">
+      <div class="section-label" style="margin-bottom:12px;">Location *</div>
+      <button type="button" class="gps-btn" id="gpsBtn" onclick="getGPS()">
+        <span>&#9678;</span> Use My Current GPS Location
+      </button>
+      <div style="height:12px;"></div>
+      <div class="field">
+        <label>Street / Location name *</label>
+        <input type="text" id="streetName" placeholder="e.g. MG Road near KPHB Metro" required/>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div class="field" style="margin-bottom:0;">
+          <label>Latitude (auto from GPS)</label>
+          <input type="text" id="lat" placeholder="Click GPS button" readonly style="background:var(--bg);color:var(--text2);cursor:default;"/>
+        </div>
+        <div class="field" style="margin-bottom:0;">
+          <label>Longitude (auto from GPS)</label>
+          <input type="text" id="lng" placeholder="Click GPS button" readonly style="background:var(--bg);color:var(--text2);cursor:default;"/>
+        </div>
+      </div>
+    </div>
+
+    <!-- DESCRIPTION -->
+    <div class="section-card">
+      <div class="section-label" style="margin-bottom:10px;">Description <span style="color:var(--text3);font-weight:400;text-transform:none;letter-spacing:0;">(optional but helpful)</span></div>
+      <div class="field" style="margin-bottom:0;">
+        <textarea id="description" placeholder="Describe what you saw in a few words — this helps others assess the situation..."></textarea>
+      </div>
+    </div>
+
+    <!-- ANONYMOUS -->
+    <div class="section-card" style="display:flex;align-items:center;gap:12px;padding:1rem 1.25rem;">
+      <input type="checkbox" id="anonymous" style="width:18px;height:18px;accent-color:var(--red);cursor:pointer;flex-shrink:0;"/>
+      <div>
+        <div style="font-size:14px;font-weight:500;color:var(--text);">Submit anonymously</div>
+        <div style="font-size:12px;color:var(--text3);margin-top:2px;">Your name will not be shown to other users</div>
+      </div>
+    </div>
+
+    <button type="submit" class="btn btn-primary btn-full" id="submitBtn" style="height:48px;font-size:15px;font-weight:600;">
+      Submit Report
+    </button>
+  </form>
+</div>
+
+<script src="../js/api.js"></script>
+<script>
+redirectIfNotAuth();
+
+// Pre-fill from URL
+const params = new URLSearchParams(window.location.search);
+if (params.get('lat'))    document.getElementById('lat').value        = params.get('lat');
+if (params.get('lng'))    document.getElementById('lng').value        = params.get('lng');
+if (params.get('street')) document.getElementById('streetName').value = params.get('street');
+
+// Auto GPS if no coords
+if (!params.get('lat') && navigator.geolocation) getGPS();
+
+function getGPS() {
+  const btn = document.getElementById('gpsBtn');
+  btn.innerHTML = '<span>&#9866;</span> Getting location...';
+  navigator.geolocation.getCurrentPosition(p => {
+    document.getElementById('lat').value = p.coords.latitude.toFixed(7);
+    document.getElementById('lng').value = p.coords.longitude.toFixed(7);
+    btn.innerHTML = '<span>&#10003;</span> GPS location captured';
+    btn.classList.add('captured');
+  }, () => {
+    btn.innerHTML = '<span>&#9678;</span> Use My Current GPS Location';
+    showToast('Location access denied', 'err');
+  });
+}
+
+// Incident type selection
+let selectedType = '';
+document.querySelectorAll('.type-tile').forEach(tile => {
+  tile.addEventListener('click', () => {
+    document.querySelectorAll('.type-tile').forEach(t => t.classList.remove('selected'));
+    tile.classList.add('selected');
+    selectedType = tile.dataset.val;
+  });
+});
+
+// Photo handling
+let photoFile = null;
+function handlePhoto(input) {
+  const file = input.files[0];
+  if (!file) return;
+  if (file.size > 5 * 1024 * 1024) { showToast('Photo too large — max 5MB', 'err'); return; }
+  photoFile = file;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const prev = document.getElementById('photoPreview');
+    prev.src = e.target.result;
+    prev.style.display = 'block';
+    const zone = document.getElementById('photoZone');
+    zone.classList.add('has-photo');
+    zone.querySelector('.pz-icon').textContent = '✅';
+    zone.querySelector('.pz-title').textContent = 'Photo added — ' + file.name;
+    zone.querySelector('.pz-sub').textContent = (file.size / 1024).toFixed(0) + ' KB';
+    zone.querySelector('.pz-req').style.display = 'none';
+  };
+  reader.readAsDataURL(file);
+}
+
+// SUBMIT
+document.getElementById('reportForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const btn = document.getElementById('submitBtn');
+  const err = document.getElementById('errMsg');
+  err.classList.remove('show');
+
+  if (!selectedType) {
+    err.textContent = 'Please select an incident type';
+    err.classList.add('show');
+    window.scrollTo(0, 0);
+    return;
+  }
+  if (!photoFile) {
+    err.textContent = 'Photo is required — please take or upload a photo of the incident';
+    err.classList.add('show');
+    document.getElementById('photoZone').scrollIntoView({ behavior: 'smooth' });
+    return;
+  }
+  if (!document.getElementById('streetName').value.trim()) {
+    err.textContent = 'Please enter the street or location name';
+    err.classList.add('show');
+    return;
+  }
+
+  btn.innerHTML = '<span class="spinner"></span> Submitting...';
+  btn.disabled = true;
+
+  const fd = new FormData();
+  fd.append('incident_type',  selectedType);
+  fd.append('street_name',    document.getElementById('streetName').value.trim());
+  fd.append('lat',            document.getElementById('lat').value || '0');
+  fd.append('lng',            document.getElementById('lng').value || '0');
+  fd.append('description',    document.getElementById('description').value);
+  fd.append('anonymous',      document.getElementById('anonymous').checked);
+  fd.append('photo',          photoFile);
+
+  try {
+    await apiFetch('/reports', { method: 'POST', body: fd });
+    document.getElementById('reportForm').style.display = 'none';
+    document.getElementById('okMsg').classList.add('show');
+    setTimeout(() => location.href = 'map.html', 2000);
+  } catch(ex) {
+    err.textContent = ex.message;
+    err.classList.add('show');
+    btn.textContent = 'Submit Report';
+    btn.disabled = false;
+  }
+});
+</script>
+</body>
+</html>

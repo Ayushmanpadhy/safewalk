@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>SafeWalk — Real-Time Street Safety</title>
+<link rel="stylesheet" href="css/style.css"/>
+<style>
+/* ── NAV ── */
+.nav{background:var(--white);border-bottom:1px solid var(--border);padding:0 24px;height:64px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:0 1px 4px rgba(32,33,36,.08);}
+.nav-brand{display:flex;align-items:center;gap:10px;font-size:18px;font-weight:700;color:var(--text);}
+.nav-mark{width:34px;height:34px;background:var(--red);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;}
+.nav-links{display:flex;align-items:center;gap:6px;}
+.nav-link{padding:8px 14px;border-radius:8px;font-size:14px;color:var(--text2);transition:all .14s;}
+.nav-link:hover{background:var(--bg);color:var(--text);}
+.nav-login{border:1px solid var(--border2);color:var(--text);padding:8px 16px;border-radius:8px;font-size:14px;transition:all .14s;}
+.nav-login:hover{border-color:#4285F4;color:#4285F4;}
+.nav-cta{background:var(--red);color:#fff;padding:9px 18px;border-radius:9px;font-size:14px;font-weight:600;box-shadow:0 2px 8px rgba(229,57,53,.3);transition:all .14s;}
+.nav-cta:hover{background:var(--red2);box-shadow:0 4px 14px rgba(229,57,53,.4);}
+.nav-ham{display:none;background:none;border:1px solid var(--border2);border-radius:8px;padding:7px 10px;font-size:18px;color:var(--text2);cursor:pointer;}
+.mob-nav{display:none;flex-direction:column;padding:12px;gap:4px;background:var(--white);border-bottom:1px solid var(--border);box-shadow:0 4px 12px rgba(32,33,36,.08);}
+.mob-nav.open{display:flex;}
+.mob-nav a{padding:10px 14px;border-radius:9px;font-size:14px;color:var(--text2);}
+
+/* ── HERO ── */
+.hero{padding:96px 24px 100px;text-align:center;background:linear-gradient(180deg,var(--white) 0%,var(--bg) 100%);border-bottom:1px solid var(--border);}
+.hero-badge{display:inline-flex;align-items:center;gap:7px;padding:5px 14px 5px 6px;border-radius:20px;background:rgba(229,57,53,.07);border:1px solid rgba(229,57,53,.2);font-size:13px;color:var(--red);font-weight:500;margin-bottom:2rem;}
+.hero-badge-dot{width:7px;height:7px;border-radius:50%;background:var(--safe);animation:bdot 2s ease-in-out infinite;}
+@keyframes bdot{0%,100%{opacity:1;}50%{opacity:.3;}}
+.hero-h1{font-size:clamp(40px,6vw,72px);font-weight:800;line-height:1.05;letter-spacing:-.03em;color:var(--text);margin-bottom:1.25rem;max-width:720px;margin-left:auto;margin-right:auto;}
+.hero-h1 .red{color:var(--red);}
+.hero-sub{font-size:17px;color:var(--text2);max-width:500px;margin:0 auto 2.5rem;line-height:1.75;}
+.hero-cta-row{display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;margin-bottom:4rem;}
+.hero-btn-p{display:inline-flex;align-items:center;gap:8px;padding:14px 28px;background:var(--red);color:#fff;border-radius:12px;font-size:15px;font-weight:700;box-shadow:0 4px 16px rgba(229,57,53,.35);transition:all .16s;}
+.hero-btn-p:hover{background:var(--red2);transform:translateY(-2px);box-shadow:0 6px 24px rgba(229,57,53,.45);}
+.hero-btn-g{display:inline-flex;align-items:center;gap:8px;padding:13px 24px;border:2px solid var(--border2);border-radius:12px;font-size:15px;font-weight:600;color:var(--text2);transition:all .16s;}
+.hero-btn-g:hover{border-color:#4285F4;color:#4285F4;}
+.hero-stats{display:flex;align-items:center;justify-content:center;gap:3rem;flex-wrap:wrap;}
+.hstat span{display:block;font-size:26px;font-weight:800;color:var(--text);}
+.hstat small{font-size:12px;color:var(--text3);}
+
+/* MAP PREVIEW */
+.map-preview-section{padding:0 24px 80px;background:var(--bg);}
+.map-wrap{max-width:900px;margin:0 auto;background:var(--white);border:1px solid var(--border);border-radius:20px;overflow:hidden;box-shadow:0 4px 24px rgba(32,33,36,.12);}
+.map-bar{background:var(--white);border-bottom:1px solid var(--border);padding:10px 14px;display:flex;align-items:center;gap:10px;}
+.map-bar-logo{background:var(--red);color:#fff;padding:7px 12px;border-radius:8px;font-size:13px;font-weight:700;}
+.map-bar-search{flex:1;height:36px;background:var(--bg);border:1px solid var(--border2);border-radius:20px;padding:0 14px;color:var(--text3);font-size:13px;display:flex;align-items:center;}
+.map-bar-sos{width:36px;height:36px;border-radius:50%;background:var(--red);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#fff;animation:sp 2s ease-in-out infinite;}
+@keyframes sp{0%,100%{box-shadow:0 2px 10px rgba(229,57,53,.4);}50%{box-shadow:0 2px 20px rgba(229,57,53,.8);}}
+.map-body{height:380px;background:#e8edf2;position:relative;overflow:hidden;}
+.map-roads{position:absolute;inset:0;}
+.map-road{position:absolute;background:rgba(255,255,255,.7);}
+.map-circle{position:absolute;border-radius:50%;transform:translate(-50%,-50%);}
+.map-pulse{position:absolute;border-radius:50%;transform:translate(-50%,-50%);animation:mpulse 2.5s ease-out infinite;}
+@keyframes mpulse{0%{transform:translate(-50%,-50%) scale(1);opacity:.6;}100%{transform:translate(-50%,-50%) scale(2.2);opacity:0;}}
+.map-info-card{position:absolute;bottom:20px;left:50%;transform:translateX(-50%);background:var(--white);border-radius:16px;padding:14px 20px;min-width:220px;text-align:center;box-shadow:0 4px 20px rgba(32,33,36,.15);border:1px solid var(--border);}
+.mic-score{font-size:44px;font-weight:800;line-height:1;}
+.mic-street{font-size:14px;font-weight:600;color:var(--text);margin:4px 0 2px;}
+.mic-tag{font-size:12px;color:var(--text3);}
+
+/* SCORE SECTION */
+.score-section{padding:80px 24px;background:var(--white);border-top:1px solid var(--border);border-bottom:1px solid var(--border);}
+.sec-center{text-align:center;margin-bottom:3rem;}
+.sec-eyebrow{font-size:12px;font-weight:600;color:var(--red);text-transform:uppercase;letter-spacing:.1em;margin-bottom:.75rem;}
+.sec-h{font-size:clamp(26px,4vw,40px);font-weight:800;color:var(--text);letter-spacing:-.02em;}
+.score-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;max-width:900px;margin:0 auto;}
+.sc{border-radius:16px;padding:1.75rem;border:1px solid;}
+.sc-safe{background:rgba(13,158,92,.05);border-color:rgba(13,158,92,.2);}
+.sc-mod {background:rgba(217,119,6,.05);border-color:rgba(217,119,6,.2);}
+.sc-caut{background:rgba(220,78,18,.05);border-color:rgba(220,78,18,.2);}
+.sc-dng {background:rgba(196,23,23,.05);border-color:rgba(196,23,23,.2);}
+.sc-num{font-size:28px;font-weight:800;margin-bottom:.3rem;font-variant-numeric:tabular-nums;}
+.sc-lbl{font-size:15px;font-weight:700;margin-bottom:.5rem;}
+.sc-desc{font-size:13px;color:var(--text2);line-height:1.65;}
+
+/* FEATURES */
+.feat-section{padding:80px 24px;background:var(--bg);}
+.feat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;max-width:1000px;margin:0 auto;}
+.feat-card{background:var(--white);border:1px solid var(--border);border-radius:16px;padding:1.75rem;transition:box-shadow .18s,transform .18s;}
+.feat-card:hover{box-shadow:0 4px 20px rgba(32,33,36,.1);transform:translateY(-3px);}
+.feat-card.featured{border-color:rgba(229,57,53,.3);box-shadow:0 2px 12px rgba(229,57,53,.08);}
+.feat-ico{width:44px;height:44px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;margin-bottom:1rem;}
+.feat-card h3{font-size:15px;font-weight:700;color:var(--text);margin-bottom:.5rem;}
+.feat-card p{font-size:13px;color:var(--text2);line-height:1.7;}
+
+/* HOW */
+.how-section{padding:80px 24px;background:var(--white);border-top:1px solid var(--border);border-bottom:1px solid var(--border);}
+.steps{display:flex;align-items:flex-start;gap:0;max-width:960px;margin:0 auto;position:relative;}
+.steps::before{content:'';position:absolute;top:22px;left:0;right:0;height:1px;background:var(--border);}
+.step{flex:1;text-align:center;padding:0 1.5rem;position:relative;}
+.step-n{width:44px;height:44px;border-radius:50%;background:var(--white);border:2px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:var(--text2);margin:0 auto 1.25rem;}
+.step.act .step-n{background:var(--red);border-color:var(--red);color:#fff;}
+.step h4{font-size:14px;font-weight:700;color:var(--text);margin-bottom:.5rem;}
+.step p{font-size:13px;color:var(--text2);line-height:1.65;}
+
+/* CTA */
+.cta-section{padding:96px 24px;text-align:center;background:var(--bg);}
+.cta-h{font-size:clamp(28px,4vw,48px);font-weight:800;color:var(--text);letter-spacing:-.03em;margin-bottom:.75rem;}
+.cta-p{font-size:16px;color:var(--text2);margin-bottom:2rem;line-height:1.7;}
+
+/* FOOTER */
+.footer{background:var(--white);border-top:1px solid var(--border);padding:24px;display:flex;align-items:center;flex-wrap:wrap;gap:16px;}
+.footer-brand{display:flex;align-items:center;gap:8px;font-size:15px;font-weight:700;color:var(--text);margin-right:auto;}
+.footer-links{display:flex;gap:16px;}
+.footer-links a{font-size:13px;color:var(--text3);transition:color .14s;}
+.footer-links a:hover{color:var(--text2);}
+.footer-note{font-size:12px;color:var(--text3);}
+
+@media(max-width:900px){
+  .score-grid{grid-template-columns:repeat(2,1fr);}
+  .feat-grid{grid-template-columns:repeat(2,1fr);}
+  .steps{flex-direction:column;align-items:center;}
+  .steps::before{display:none;}
+  .step{padding:0 1rem 2rem;max-width:280px;}
+}
+@media(max-width:640px){
+  .nav-links{display:none;}
+  .nav-ham{display:block;}
+  .hero-h1{font-size:clamp(32px,8vw,52px);}
+  .feat-grid{grid-template-columns:1fr;}
+  .score-grid{grid-template-columns:1fr 1fr;}
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="nav">
+  <div class="nav-brand"><div class="nav-mark">SW</div>SafeWalk</div>
+  <div class="nav-links">
+    <a href="#features" class="nav-link">Features</a>
+    <a href="#how" class="nav-link">How it works</a>
+    <a href="pages/login.html" class="nav-login">Sign in</a>
+    <a href="pages/register.html" class="nav-cta">Get started</a>
+  </div>
+  <button class="nav-ham" onclick="document.getElementById('mobNav').classList.toggle('open')">&#9776;</button>
+</nav>
+<div class="mob-nav" id="mobNav">
+  <a href="#features">Features</a>
+  <a href="#how">How it works</a>
+  <a href="pages/login.html">Sign in</a>
+  <a href="pages/register.html" style="background:var(--red);color:#fff;border-radius:9px;font-weight:600;">Get started free</a>
+</div>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-badge"><span class="hero-badge-dot"></span>Live street safety data</div>
+  <h1 class="hero-h1">Know the <span class="red">danger</span><br>before you walk.</h1>
+  <p class="hero-sub">SafeWalk gives every street a real-time safety score from 0–100. Community-powered. Updated every hour. Covers every lane, gully and road.</p>
+  <div class="hero-cta-row">
+    <a href="pages/register.html" class="hero-btn-p">Start for free &#8594;</a>
+    <a href="pages/map.html"      class="hero-btn-g">&#128205; View live map</a>
+  </div>
+  <div class="hero-stats">
+    <div class="hstat"><span>0–100</span><small>Score per street</small></div>
+    <div class="hstat"><span>Hourly</span><small>Score updates</small></div>
+    <div class="hstat"><span>1-tap</span><small>SOS panic button</small></div>
+    <div class="hstat"><span>Real</span><small>Turn-by-turn routes</small></div>
+  </div>
+</section>
+
+<!-- MAP PREVIEW -->
+<section class="map-preview-section" style="padding-top:60px;">
+  <div style="max-width:900px;margin:0 auto;">
+    <div class="map-wrap">
+      <div class="map-bar">
+        <div class="map-bar-logo">SafeWalk</div>
+        <div class="map-bar-search">Search any street or area...</div>
+        <div class="map-bar-sos">SOS</div>
+      </div>
+      <div class="map-body">
+        <div class="map-roads">
+          <div class="map-road" style="width:100%;height:10px;top:40%;"></div>
+          <div class="map-road" style="width:100%;height:8px;top:65%;transform:rotate(-3deg);"></div>
+          <div class="map-road" style="width:10px;height:100%;left:35%;"></div>
+          <div class="map-road" style="width:8px;height:100%;left:68%;transform:rotate(8deg);"></div>
+          <div class="map-road" style="width:6px;height:100%;left:20%;opacity:.5;"></div>
+          <div class="map-road" style="width:6px;height:100%;left:55%;opacity:.5;"></div>
+          <div class="map-road" style="width:100%;height:6px;top:25%;opacity:.5;"></div>
+        </div>
+        <div class="map-circle" style="width:100px;height:100px;background:rgba(13,158,92,.3);top:28%;left:20%;"></div>
+        <div class="map-circle" style="width:130px;height:130px;background:rgba(217,119,6,.3);top:58%;left:52%;"></div>
+        <div class="map-circle" style="width:95px;height:95px;background:rgba(196,23,23,.35);top:32%;left:72%;"></div>
+        <div class="map-circle" style="width:80px;height:80px;background:rgba(13,158,92,.25);top:68%;left:28%;"></div>
+        <div class="map-circle" style="width:75px;height:75px;background:rgba(220,78,18,.3);top:20%;left:50%;"></div>
+        <div class="map-pulse"  style="width:95px;height:95px;background:rgba(196,23,23,.15);top:32%;left:72%;"></div>
+        <!-- User dot -->
+        <div style="position:absolute;top:60%;left:40%;transform:translate(-50%,-50%);width:14px;height:14px;border-radius:50%;background:#4285F4;border:3px solid #fff;box-shadow:0 0 0 6px rgba(66,133,244,.2);"></div>
+        <div class="map-info-card">
+          <div class="mic-score" style="color:#C41717;">28</div>
+          <div class="mic-street">Old City Road</div>
+          <div class="mic-tag">Danger Zone — 4 reports tonight</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SCORE SECTION -->
+<section class="score-section">
+  <div class="sec-center">
+    <div class="sec-eyebrow">Safety score system</div>
+    <div class="sec-h">What does the score mean?</div>
+  </div>
+  <div class="score-grid">
+    <div class="sc sc-safe"><div class="sc-num" style="color:#0D9E5C;">80–100</div><div class="sc-lbl" style="color:#0D9E5C;">Very Safe</div><div class="sc-desc">Well-lit, active. Low or no recent incidents. Safe at any hour.</div></div>
+    <div class="sc sc-mod"><div class="sc-num" style="color:#D97706;">55–79</div><div class="sc-lbl" style="color:#D97706;">Moderate</div><div class="sc-desc">Generally okay. A few minor reports. Stay alert at night.</div></div>
+    <div class="sc sc-caut"><div class="sc-num" style="color:#DC4E12;">30–54</div><div class="sc-lbl" style="color:#DC4E12;">Caution</div><div class="sc-desc">Multiple recent incidents. Avoid if possible after dark.</div></div>
+    <div class="sc sc-dng"><div class="sc-num" style="color:#C41717;">0–29</div><div class="sc-lbl" style="color:#C41717;">Danger Zone</div><div class="sc-desc">High incident zone. Auto-escalated to police. Avoid.</div></div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section class="feat-section" id="features">
+  <div style="max-width:1000px;margin:0 auto;">
+    <div class="sec-center">
+      <div class="sec-eyebrow">Features</div>
+      <div class="sec-h">Everything you need to stay safe</div>
+    </div>
+    <div class="feat-grid">
+      <div class="feat-card featured">
+        <div class="feat-ico" style="background:rgba(229,57,53,.1);">&#128205;</div>
+        <h3>Live Street Heatmap</h3>
+        <p>Every street, lane, and gully color-coded by safety score. Covers all roads including small streets. Updates every hour.</p>
+      </div>
+      <div class="feat-card">
+        <div class="feat-ico" style="background:rgba(66,133,244,.1);">&#128739;</div>
+        <h3>Real Turn-by-Turn Routes</h3>
+        <p>Actual road-following routes with walking instructions, distance and time — not a straight line. Avoids danger zones.</p>
+      </div>
+      <div class="feat-card featured">
+        <div class="feat-ico" style="background:rgba(229,57,53,.1);">&#128680;</div>
+        <h3>SOS Panic Button</h3>
+        <p>One tap sends your GPS location to all saved emergency contacts. Add unlimited contacts from your profile.</p>
+      </div>
+      <div class="feat-card">
+        <div class="feat-ico" style="background:rgba(217,119,6,.1);">&#128247;</div>
+        <h3>Photo-Verified Reports</h3>
+        <p>Every report requires a photo. No fake incidents. Community-verified data you can actually trust.</p>
+      </div>
+      <div class="feat-card">
+        <div class="feat-ico" style="background:rgba(220,78,18,.1);">&#9200;</div>
+        <h3>Time-Aware Scoring</h3>
+        <p>Same street scores 82 at 6pm and 34 at 11pm. Risk multipliers reflect how danger changes through the day.</p>
+      </div>
+      <div class="feat-card">
+        <div class="feat-ico" style="background:rgba(13,158,92,.1);">&#128272;</div>
+        <h3>Authority Dashboard</h3>
+        <p>Police and civic bodies see live hotspots, unresolved reports, and auto-escalation alerts for chronic danger zones.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section class="how-section" id="how">
+  <div style="max-width:960px;margin:0 auto;">
+    <div class="sec-center">
+      <div class="sec-eyebrow">How it works</div>
+      <div class="sec-h">Four steps to a safer walk</div>
+    </div>
+    <div class="steps">
+      <div class="step act">
+        <div class="step-n">1</div>
+        <h4>Report with photo</h4>
+        <p>Report unsafe conditions with a required photo. GPS auto-fills. Anonymous option available.</p>
+      </div>
+      <div class="step">
+        <div class="step-n">2</div>
+        <h4>Score engine runs</h4>
+        <p>Algorithm weighs severity, time of day, report age, and reporter trust — calculates 0–100 every hour.</p>
+      </div>
+      <div class="step">
+        <div class="step-n">3</div>
+        <h4>Map updates live</h4>
+        <p>Heatmap updates. Danger zones escalate to police. Safe routes recalculate instantly.</p>
+      </div>
+      <div class="step">
+        <div class="step-n">4</div>
+        <h4>Streets recover</h4>
+        <p>Old reports decay over time. Resolved incidents clear the score. Streets improve as they get safer.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="cta-section">
+  <h2 class="cta-h">Make your streets safer today.</h2>
+  <p class="cta-p">Every report you submit protects someone walking that street tonight.</p>
+  <a href="pages/register.html" class="hero-btn-p" style="font-size:16px;padding:16px 32px;">Join SafeWalk — Free &#8594;</a>
+</section>
+
+<!-- FOOTER -->
+<footer class="footer">
+  <div class="footer-brand"><div class="nav-mark" style="width:28px;height:28px;font-size:11px;">SW</div>SafeWalk</div>
+  <div class="footer-links">
+    <a href="pages/map.html">Live Map</a>
+    <a href="pages/report.html">Report</a>
+    <a href="pages/login.html">Login</a>
+    <a href="pages/register.html">Register</a>
+  </div>
+  <div class="footer-note">Web Programming — 4th Semester Project</div>
+</footer>
+
+<script>
+document.querySelectorAll('a[href^="#"]').forEach(a => {
+  a.addEventListener('click', e => {
+    e.preventDefault();
+    document.querySelector(a.getAttribute('href'))?.scrollIntoView({ behavior: 'smooth' });
+    document.getElementById('mobNav').classList.remove('open');
+  });
+});
+</script>
+</body>
+</html>

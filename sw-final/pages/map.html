@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
+<title>SafeWalk — Live Map (Leaflet Edition)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css" />
+<link rel="stylesheet" href="../css/map.css">
+<script>
+window.onerror = function(msg, url, line) {
+    if (msg.includes('ResizeObserver')) return;
+    let e = document.createElement('div');
+    e.style.cssText = 'position:fixed;top:0;left:0;width:100%;background:rgba(220,38,38,0.95);color:white;padding:12px;z-index:99999;font-family:monospace;font-size:12px;';
+    e.innerHTML = `<strong>JS ERROR:</strong> ${msg} at line ${line}`;
+    window.onload = () => document.body.appendChild(e);
+};
+</script>
+</head>
+<body>
+
+<div id="map"></div>
+
+<div class="loader" id="loader">
+  <div class="loader-ring"></div>
+  <div class="loader-text">Loading SafeWalk...</div>
+</div>
+
+<div class="night-banner" id="nightBanner" style="display:none;">Night mode — safety scores weighted higher</div>
+
+<!-- ── TOP BAR ── -->
+<div class="topbar">
+  <button class="logo-btn" onclick="location.reload()">
+    <span style="color:var(--red);">📍</span> SafeWalk
+  </button>
+  <div class="search-wrap">
+    <span class="search-ico">🔍</span>
+    <input class="search-input" id="searchInput" type="text" placeholder="Search any street, lane or area..." autocomplete="off"/>
+    <button class="search-clear" onclick="clearSearch()">×</button>
+    <div class="search-results" id="searchResults"></div>
+  </div>
+  <div class="topbar-actions">
+    <button class="map-action-btn" id="routeBtn" onclick="toggleRoute()" title="Plan safe route">🛣</button>
+    <button class="map-action-btn" onclick="locateMe()" title="My location">◎</button>
+    <a href="report.html" class="map-action-btn report-btn" title="Report incident">+</a>
+    <button class="map-action-btn" id="profileBtn" onclick="toggleProfile()" title="My profile">👤</button>
+  </div>
+</div>
+
+<div class="city-nav">
+  <button class="city-btn" onclick="jumpToCity('Delhi')">Delhi</button>
+  <button class="city-btn" onclick="jumpToCity('Mumbai')">Mumbai</button>
+  <button class="city-btn" onclick="jumpToCity('Bangalore')">Bangalore</button>
+  <button class="city-btn" onclick="jumpToCity('Hyderabad')">Hyderabad</button>
+</div>
+
+<!-- ── ROUTE PANEL ── -->
+<div class="route-panel" id="routePanel">
+  <div class="rp-header">
+    <span class="rp-title">🛣 Plan Safe Route</span>
+    <button class="rp-close" onclick="toggleRoute()">×</button>
+  </div>
+  <div class="rp-inputs">
+    <div class="rp-field">
+      <div class="rp-dot from"></div>
+      <input class="rp-input" id="rpFrom" placeholder="Starting point (or your location)" type="text"/>
+      <button class="rp-gps-btn" onclick="fillGPS('from')" title="Use my location">◎</button>
+      <div class="rp-s-results" id="rpFromResults"></div>
+    </div>
+    <div class="rp-connector" style="margin-left:15px;"></div>
+    <div class="rp-field">
+      <div class="rp-dot to"></div>
+      <input class="rp-input" id="rpTo" placeholder="Where are you going?" type="text"/>
+      <div class="rp-s-results" id="rpToResults"></div>
+    </div>
+  </div>
+  <button class="rp-go-btn" id="rpGoBtn" onclick="planRoute()">Get Safe Route</button>
+  <div class="rp-result" id="rpResult">
+    <button class="rp-close-route" onclick="clearRoute()">Clear Route</button>
+    <div class="rp-verdict" id="rpVerdict"></div>
+    <div class="rp-steps"  id="rpSteps"></div>
+    <div class="rp-danger-zones" id="rpDangerZones"></div>
+  </div>
+</div>
+
+<!-- ── STREET INFO PANEL ── -->
+<div class="street-panel" id="streetPanel">
+  <div class="sp-drag"></div>
+  <div class="sp-body">
+    <div class="sp-row1">
+      <div class="sp-name" id="spName"></div>
+      <button class="sp-x" onclick="closeSP()">×</button>
+    </div>
+    <div class="sp-escalated" id="spEscalated" style="display:none;">
+      ⚠ This zone has been flagged and escalated to authorities
+    </div>
+    <div class="sp-score-row">
+      <div class="sp-score-num" id="spNum"></div>
+      <div class="sp-score-info">
+        <div class="sp-score-lbl" id="spLbl"></div>
+        <div class="sp-score-sub">out of 100</div>
+        <span class="sp-trend" id="spTrend"></span>
+      </div>
+    </div>
+    <div class="sp-grid">
+      <div class="sp-cell">
+        <div class="sp-cell-val" id="spDay"></div>
+        <div class="sp-cell-lbl">Day</div>
+      </div>
+      <div class="sp-cell">
+        <div class="sp-cell-val" id="spNight"></div>
+        <div class="sp-cell-lbl">Night</div>
+      </div>
+      <div class="sp-cell">
+        <div class="sp-cell-val" id="spReports"></div>
+        <div class="sp-cell-lbl">Reports</div>
+      </div>
+    </div>
+    <div class="sp-actions">
+      <button class="sp-btn primary" id="spRepBtn">Report incident</button>
+      <button class="sp-btn secondary" onclick="routeToHere()">Route here</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── PROFILE PANEL ── -->
+<div class="profile-panel" id="profilePanel">
+  <div class="pp-user">
+    <div class="pp-avatar" id="ppInitial">?</div>
+    <div>
+      <div class="pp-name"  id="ppName">Loading...</div>
+      <div class="pp-email" id="ppEmail"></div>
+    </div>
+  </div>
+  <div class="pp-body">
+    <div class="pp-section-title">SOS Emergency Contacts</div>
+    <div id="ppContactList"></div>
+    <button class="add-contact-trigger" onclick="toggleAddContact()">+ Add emergency contact</button>
+    <div class="add-contact-wrap" id="addContactWrap">
+      <input class="ac-input" id="acName"  placeholder="Contact name"/>
+      <input class="ac-input" id="acPhone" placeholder="Phone number"/>
+      <input class="ac-input" id="acEmail" placeholder="Email address"/>
+      <div class="ac-btns">
+        <button class="ac-btn save"   onclick="saveContact()">Save</button>
+        <button class="ac-btn cancel" onclick="toggleAddContact()">Cancel</button>
+      </div>
+    </div>
+    <div class="pp-divider"></div>
+    <a href="report.html" class="pp-action">📝 Report an incident</a>
+    <button class="pp-action red" onclick="doLogout()" style="width:100%;text-align:left;">🚪 Sign out</button>
+  </div>
+</div>
+
+<!-- ── MAP CONTROLS ── -->
+<div class="map-controls">
+  <button class="mc-btn" onclick="map.zoomIn()">+</button>
+  <button class="mc-btn" onclick="map.zoomOut()">−</button>
+  <button class="mc-locate" onclick="locateMe()" title="My location">◎</button>
+</div>
+
+<!-- ── LEGEND ── -->
+<div class="legend">
+  <div class="leg-title">Safety Score</div>
+  <div class="leg-row"><span class="leg-dot" style="background:#D97706;"></span>Moderate (55–79)</div>
+  <div class="leg-row"><span class="leg-dot" style="background:#DC4E12;"></span>Caution (30–54)</div>
+  <div class="leg-row"><span class="leg-dot" style="background:#C41717;"></span>Danger (0–29)</div>
+</div>
+
+<!-- ── SOS ── -->
+<button class="sos-btn" id="sosBtn" onclick="triggerSOS()">SOS</button>
+
+<!-- ── TOAST ── -->
+<div class="toast" id="toast"></div>
+
+<!-- ── SCRIPTS ── -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
+<script src="../js/api.js"></script>
+<script src="../js/indian_roads.js"></script>
+<script src="../js/map_engine.js"></script>
+</body>
+</html>

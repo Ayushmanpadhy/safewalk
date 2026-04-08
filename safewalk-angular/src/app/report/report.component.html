@@ -1,0 +1,64 @@
+<div class="page-container">
+  <div class="page-header">
+    <a routerLink="/map" class="back-btn">← Back to Map</a>
+    <h2>Report an Incident</h2>
+    <p>Your report helps keep streets safer for everyone</p>
+  </div>
+
+  <div class="success-banner" *ngIf="success">
+    Report submitted! Redirecting to map...
+  </div>
+
+  <form (ngSubmit)="onSubmit()" *ngIf="!success">
+    <div class="form-group">
+      <label>Incident type *</label>
+      <select [(ngModel)]="form.incident_type" name="incident_type" required>
+        <option value="">— Select type —</option>
+        <option *ngFor="let type of incidentTypes" [value]="type.value">
+          {{ type.label }}
+        </option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label>Street name *</label>
+      <input type="text" [(ngModel)]="form.street_name" name="street_name"
+             placeholder="e.g. MG Road, Hyderabad" required />
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label>Latitude</label>
+        <input type="text" [(ngModel)]="form.lat" name="lat" placeholder="Auto-filled from GPS" />
+      </div>
+      <div class="form-group">
+        <label>Longitude</label>
+        <input type="text" [(ngModel)]="form.lng" name="lng" placeholder="Auto-filled from GPS" />
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>Description (optional)</label>
+      <textarea [(ngModel)]="form.description" name="description" rows="3"
+                placeholder="Describe what you saw..."></textarea>
+    </div>
+
+    <div class="form-group">
+      <label>Photo (optional)</label>
+      <input type="file" accept="image/*" (change)="onFileSelect($event)" />
+    </div>
+
+    <div class="form-group checkbox-group">
+      <label>
+        <input type="checkbox" [(ngModel)]="form.anonymous" name="anonymous" />
+        Submit anonymously
+      </label>
+    </div>
+
+    <div class="error-msg" *ngIf="error">{{ error }}</div>
+
+    <button type="submit" class="btn-primary" [disabled]="loading">
+      {{ loading ? 'Submitting...' : 'Submit Report' }}
+    </button>
+  </form>
+</div>

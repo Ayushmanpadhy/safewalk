@@ -1,0 +1,1053 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>SafeWalk — Live Map</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --red:#E53935; --red2:#EF5350; --red-bg:rgba(229,57,53,.09);
+  --safe:#0D9E5C; --mod:#D97706; --caut:#DC4E12; --dng:#C41717;
+  --white:#fff; --bg:#F8F9FA; --surface:#fff;
+  --border:#E8EAED; --border2:#DADCE0;
+  --text:#202124; --text2:#5F6368; --text3:#9AA0A6;
+  --font:'Inter',-apple-system,sans-serif;
+  --sh:0 2px 10px rgba(32,33,36,.15); --sh2:0 4px 24px rgba(32,33,36,.18);
+  --panel-radius:16px;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; font-family: var(--font); overflow: hidden; background: var(--bg); }
+#map { position: fixed; inset: 0; z-index: 1; }
+
+/* ══════════════════════════════════
+   TOP BAR  — exactly like Google Maps
+   ══════════════════════════════════ */
+.topbar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
+  padding: 10px 12px;
+  display: flex; align-items: center; gap: 10px;
+  pointer-events: none;
+}
+.topbar > * { pointer-events: auto; }
+
+.logo-btn {
+  background: var(--white); border: none; border-radius: 12px;
+  padding: 0 14px; height: 46px;
+  font-family: var(--font); font-size: 15px; font-weight: 700;
+  color: var(--red); cursor: pointer; flex-shrink: 0;
+  box-shadow: var(--sh); display: flex; align-items: center; gap: 6px;
+  letter-spacing: -.3px;
+}
+
+/* Google-style search bar */
+.search-wrap { flex: 1; max-width: 500px; position: relative; }
+.search-input {
+  width: 100%; height: 46px;
+  background: var(--white); border: none;
+  border-radius: 24px;
+  padding: 0 16px 0 48px;
+  font-size: 14px; font-family: var(--font); color: var(--text);
+  outline: none; box-shadow: var(--sh);
+  transition: box-shadow .2s;
+}
+.search-input:focus { box-shadow: var(--sh2); }
+.search-input::placeholder { color: var(--text3); }
+.search-ico {
+  position: absolute; left: 16px; top: 50%; transform: translateY(-50%);
+  color: var(--text3); font-size: 17px; pointer-events: none;
+}
+.search-clear {
+  position: absolute; right: 14px; top: 50%; transform: translateY(-50%);
+  background: none; border: none; cursor: pointer; color: var(--text3);
+  font-size: 18px; display: none; line-height: 1;
+}
+.search-input:not(:placeholder-shown) ~ .search-clear { display: block; }
+.search-dropdown {
+  position: absolute; top: 54px; left: 0; right: 0;
+  background: var(--white); border-radius: 16px;
+  overflow: hidden; box-shadow: var(--sh2); display: none; z-index: 200;
+}
+.search-dropdown.open { display: block; }
+.sresult {
+  padding: 12px 16px; cursor: pointer; display: flex; align-items: center; gap: 12px;
+  border-bottom: 1px solid var(--border); transition: background .12s;
+}
+.sresult:last-child { border-bottom: none; }
+.sresult:hover { background: var(--bg); }
+.sresult-ico {
+  width: 36px; height: 36px; border-radius: 50%; background: var(--bg);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; flex-shrink: 0;
+}
+.sresult-name { font-size: 14px; font-weight: 500; color: var(--text); }
+.sresult-sub  { font-size: 12px; color: var(--text3); margin-top: 1px; }
+
+.topbar-actions { display: flex; gap: 8px; }
+.map-action-btn {
+  width: 46px; height: 46px; border-radius: 50%;
+  background: var(--white); border: none;
+  box-shadow: var(--sh); cursor: pointer; font-size: 18px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text2); transition: all .15s; text-decoration: none;
+}
+.map-action-btn:hover { box-shadow: var(--sh2); color: var(--text); }
+.map-action-btn.active { background: var(--red); color: #fff; }
+.map-action-btn.report-btn { background: var(--red); color: #fff; font-size: 22px; font-weight: 700; }
+
+/* ══════════════════════════════════
+   ROUTE PANEL
+   ══════════════════════════════════ */
+.route-panel {
+  position: fixed; top: 68px; left: 12px;
+  width: 340px;
+  background: var(--white); border-radius: var(--panel-radius);
+  box-shadow: var(--sh2); z-index: 999; display: none; overflow: hidden;
+}
+.route-panel.open { display: block; animation: slidedown .2s ease; }
+@keyframes slidedown { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
+
+.rp-header {
+  padding: 14px 16px 12px;
+  display: flex; align-items: center; justify-content: space-between;
+  border-bottom: 1px solid var(--border);
+}
+.rp-title { font-size: 14px; font-weight: 600; color: var(--text); }
+.rp-close { background: none; border: none; cursor: pointer; color: var(--text3); font-size: 22px; line-height: 1; transition: color .12s; }
+.rp-close:hover { color: var(--text); }
+
+.rp-inputs { padding: 14px 16px 0; }
+.rp-field { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.rp-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.rp-dot.from { background: #4285F4; }
+.rp-dot.to   { background: var(--red); }
+.rp-connector { width: 2px; height: 14px; background: var(--border2); margin: -4px 0 -4px 4px; }
+.rp-input {
+  flex: 1; height: 40px;
+  background: var(--bg); border: 1.5px solid var(--border2); border-radius: 10px;
+  padding: 0 12px; font-size: 13px; font-family: var(--font);
+  color: var(--text); outline: none; transition: border-color .15s;
+}
+.rp-input:focus { border-color: #4285F4; background: var(--white); }
+.rp-input::placeholder { color: var(--text3); }
+.rp-gps-btn {
+  width: 36px; height: 36px; border-radius: 50%;
+  background: var(--bg); border: 1.5px solid var(--border2);
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  font-size: 15px; color: var(--text2); transition: all .15s; flex-shrink: 0;
+}
+.rp-gps-btn:hover { border-color: #4285F4; color: #4285F4; }
+
+.rp-go-btn {
+  margin: 12px 16px 14px; width: calc(100% - 32px); height: 42px;
+  background: var(--red); color: #fff; border: none; border-radius: 10px;
+  font-size: 14px; font-weight: 600; font-family: var(--font); cursor: pointer;
+  transition: background .15s;
+}
+.rp-go-btn:hover { background: var(--red2); }
+.rp-go-btn:disabled { opacity: .55; cursor: not-allowed; }
+
+.rp-result { border-top: 1px solid var(--border); padding: 12px 16px; display: none; }
+.rp-result.open { display: block; }
+.rp-verdict {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 12px; border-radius: 10px; margin-bottom: 10px;
+  font-size: 13px; font-weight: 600;
+}
+.rp-steps { display: flex; flex-direction: column; gap: 4px; max-height: 220px; overflow-y: auto; }
+.rp-step {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 10px; background: var(--bg); border-radius: 9px; font-size: 12px;
+}
+.rp-step-n {
+  width: 22px; height: 22px; border-radius: 50%; background: var(--border2);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 700; color: var(--text2); flex-shrink: 0;
+}
+.rp-step-txt { flex: 1; color: var(--text2); line-height: 1.4; }
+.rp-step-dist { font-size: 11px; color: var(--text3); font-weight: 500; white-space: nowrap; }
+.rp-danger-zones { margin-top: 10px; }
+.rp-dz-title { font-size: 11px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 6px; }
+.rp-dz-item {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 7px 10px; background: rgba(229,57,53,.05); border-radius: 8px;
+  margin-bottom: 4px; font-size: 12px; border: 1px solid rgba(229,57,53,.12);
+}
+
+/* ══════════════════════════════════
+   STREET INFO PANEL (bottom)
+   ══════════════════════════════════ */
+.street-panel {
+  position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%);
+  width: 400px; max-width: calc(100vw - 24px);
+  background: var(--white); border-radius: 20px;
+  box-shadow: var(--sh2); z-index: 1000; display: none; overflow: hidden;
+}
+.street-panel.open { display: block; animation: slideup .22s ease; }
+@keyframes slideup {
+  from { opacity: 0; transform: translateX(-50%) translateY(16px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+.sp-drag { width: 32px; height: 4px; background: var(--border2); border-radius: 2px; margin: 10px auto 0; }
+.sp-body { padding: 12px 18px 18px; }
+.sp-row1 { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 10px; }
+.sp-name { font-size: 16px; font-weight: 600; color: var(--text); flex: 1; padding-right: 8px; line-height: 1.3; }
+.sp-x { background: none; border: none; cursor: pointer; color: var(--text3); font-size: 22px; line-height: 1; }
+.sp-x:hover { color: var(--text); }
+.sp-escalated {
+  background: #FFF8E1; border: 1px solid #FFD600; border-radius: 8px;
+  padding: 8px 12px; font-size: 12px; color: #795500;
+  display: flex; align-items: center; gap: 6px; margin-bottom: 10px;
+}
+.sp-score-row { display: flex; align-items: center; gap: 16px; margin-bottom: 14px; }
+.sp-score-num { font-size: 52px; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }
+.sp-score-info { flex: 1; }
+.sp-score-lbl { font-size: 15px; font-weight: 600; }
+.sp-score-sub { font-size: 12px; color: var(--text3); margin-top: 2px; }
+.sp-trend {
+  display: inline-flex; align-items: center; gap: 4px;
+  margin-top: 6px; padding: 3px 10px; border-radius: 20px;
+  font-size: 11px; font-weight: 600;
+}
+.t-up   { background: rgba(13,158,92,.1);  color: #0D9E5C; }
+.t-down { background: rgba(229,57,53,.1);  color: #E53935; }
+.t-stab { background: var(--bg);           color: var(--text3); }
+.sp-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 14px; }
+.sp-cell { background: var(--bg); border-radius: 10px; padding: 10px; text-align: center; border: 1px solid var(--border); }
+.sp-cell-val { font-size: 18px; font-weight: 700; color: var(--text); }
+.sp-cell-lbl { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: .04em; margin-top: 2px; }
+.sp-actions { display: flex; gap: 8px; }
+.sp-btn {
+  flex: 1; height: 40px; border-radius: 10px; font-size: 13px; font-weight: 600;
+  font-family: var(--font); cursor: pointer; border: none; transition: all .15s;
+}
+.sp-btn.primary { background: var(--red); color: #fff; }
+.sp-btn.primary:hover { background: var(--red2); }
+.sp-btn.secondary { background: var(--bg); color: var(--text); border: 1.5px solid var(--border2); }
+.sp-btn.secondary:hover { border-color: #4285F4; color: #4285F4; }
+
+/* ══════════════════════════════════
+   PROFILE PANEL
+   ══════════════════════════════════ */
+.profile-panel {
+  position: fixed; top: 68px; right: 12px; width: 310px;
+  background: var(--white); border-radius: var(--panel-radius);
+  box-shadow: var(--sh2); z-index: 999; display: none; overflow: hidden;
+}
+.profile-panel.open { display: block; animation: slidedown .2s ease; }
+.pp-user { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-bottom: 1px solid var(--border); }
+.pp-avatar { width: 42px; height: 42px; border-radius: 50%; background: var(--red); display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 700; color: #fff; flex-shrink: 0; }
+.pp-name  { font-size: 14px; font-weight: 600; color: var(--text); }
+.pp-email { font-size: 12px; color: var(--text3); }
+.pp-body  { padding: 12px 16px; }
+.pp-section-title { font-size: 11px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 10px; }
+.contact-chip {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 9px 12px; background: var(--bg); border-radius: 9px;
+  margin-bottom: 6px; border: 1px solid var(--border);
+}
+.cc-name  { font-size: 13px; font-weight: 500; color: var(--text); }
+.cc-phone { font-size: 11px; color: var(--text3); margin-top: 1px; }
+.cc-rm    { background: none; border: none; cursor: pointer; color: var(--text3); font-size: 16px; transition: color .12s; }
+.cc-rm:hover { color: var(--red); }
+.add-contact-wrap { display: none; padding: 12px; background: var(--bg); border-radius: 10px; border: 1px solid var(--border); margin-top: 8px; }
+.add-contact-wrap.open { display: block; }
+.ac-input { width: 100%; padding: 8px 10px; background: var(--white); border: 1.5px solid var(--border2); border-radius: 8px; font-size: 12px; font-family: var(--font); color: var(--text); outline: none; margin-bottom: 6px; }
+.ac-input:focus { border-color: #4285F4; }
+.ac-input::placeholder { color: var(--text3); }
+.ac-btns { display: flex; gap: 6px; }
+.ac-btn { padding: 7px 14px; border-radius: 7px; font-size: 12px; font-weight: 600; font-family: var(--font); cursor: pointer; border: none; transition: all .15s; }
+.ac-btn.save { background: var(--red); color: #fff; }
+.ac-btn.cancel { background: var(--bg); color: var(--text2); border: 1px solid var(--border2); }
+.add-contact-trigger {
+  width: 100%; padding: 9px; background: var(--white); border: 1.5px dashed var(--border2);
+  border-radius: 9px; color: var(--text2); font-size: 13px; cursor: pointer;
+  margin-top: 8px; font-family: var(--font); transition: all .15s;
+}
+.add-contact-trigger:hover { border-color: #4285F4; color: #4285F4; }
+.pp-divider { height: 1px; background: var(--border); margin: 12px 0; }
+.pp-action {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px; border-radius: 9px;
+  font-size: 13px; color: var(--text); cursor: pointer;
+  border: none; background: none; width: 100%; text-decoration: none;
+  font-family: var(--font); transition: background .12s;
+}
+.pp-action:hover { background: var(--bg); }
+.pp-action.red { color: var(--red); }
+
+/* ══════════════════════════════════
+   MAP CONTROLS (right side)
+   ══════════════════════════════════ */
+.map-controls {
+  position: fixed; right: 12px; bottom: 160px;
+  display: flex; flex-direction: column; gap: 2px; z-index: 999;
+}
+.mc-btn {
+  width: 40px; height: 40px;
+  background: var(--white); border: none;
+  box-shadow: var(--sh); cursor: pointer;
+  font-size: 18px; display: flex; align-items: center; justify-content: center;
+  color: var(--text2); transition: all .15s;
+}
+.mc-btn:first-child { border-radius: 8px 8px 0 0; border-bottom: 1px solid var(--border); }
+.mc-btn:last-child  { border-radius: 0 0 8px 8px; }
+.mc-btn:hover { color: var(--text); }
+.mc-locate {
+  width: 40px; height: 40px; border-radius: 50%;
+  background: var(--white); border: none;
+  box-shadow: var(--sh); cursor: pointer; font-size: 17px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text2); margin-top: 8px; transition: all .15s;
+}
+.mc-locate:hover { box-shadow: var(--sh2); color: #4285F4; }
+
+/* ══════════════════════════════════
+   LEGEND
+   ══════════════════════════════════ */
+.legend {
+  position: fixed; bottom: 16px; right: 12px;
+  background: var(--white); border-radius: 12px;
+  box-shadow: var(--sh); padding: 12px 14px; z-index: 999;
+}
+.leg-title { font-size: 11px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 8px; }
+.leg-row   { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; font-size: 12px; color: var(--text2); }
+.leg-row:last-child { margin-bottom: 0; }
+.leg-dot   { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+
+/* ══════════════════════════════════
+   SOS BUTTON
+   ══════════════════════════════════ */
+.sos-btn {
+  position: fixed; bottom: 16px; left: 16px;
+  width: 60px; height: 60px; border-radius: 50%;
+  background: var(--red); color: #fff; font-size: 13px; font-weight: 800;
+  border: 3px solid #fff; cursor: pointer; z-index: 1001;
+  box-shadow: 0 4px 20px rgba(229,57,53,.5);
+  animation: sos-pulse 2.5s ease-in-out infinite;
+  transition: transform .15s; font-family: var(--font);
+}
+.sos-btn:hover   { transform: scale(1.06); }
+.sos-btn:active  { transform: scale(.95); }
+@keyframes sos-pulse {
+  0%,100% { box-shadow: 0 4px 20px rgba(229,57,53,.5); }
+  50%     { box-shadow: 0 4px 30px rgba(229,57,53,.9), 0 0 0 8px rgba(229,57,53,.12); }
+}
+
+/* ══════════════════════════════════
+   NIGHT BANNER
+   ══════════════════════════════════ */
+.night-banner {
+  position: fixed; top: 68px; left: 50%; transform: translateX(-50%);
+  background: #1a1a2e; color: #a0a0d0; padding: 6px 18px;
+  border-radius: 20px; font-size: 12px; z-index: 998; display: none;
+}
+
+/* ══════════════════════════════════
+   LOADING
+   ══════════════════════════════════ */
+.loader {
+  position: fixed; inset: 0; background: var(--white); z-index: 3000;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
+}
+.loader-ring { width: 40px; height: 40px; border: 3px solid var(--border); border-top-color: var(--red); border-radius: 50%; animation: spin .65s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.loader-text { font-size: 14px; color: var(--text2); font-weight: 500; }
+
+/* ══════════════════════════════════
+   TOAST
+   ══════════════════════════════════ */
+.toast {
+  position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%) translateY(12px);
+  padding: 10px 20px; border-radius: 10px; font-size: 13px; font-weight: 500;
+  z-index: 4000; opacity: 0; transition: all .22s; pointer-events: none;
+  white-space: nowrap; box-shadow: var(--sh2); background: #1f2937; color: #fff;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+.toast.ok   { background: var(--safe); }
+.toast.err  { background: var(--red); }
+
+/* ══════════════════════════════════
+   USER LOCATION DOT
+   ══════════════════════════════════ */
+.user-dot { width: 14px; height: 14px; border-radius: 50%; background: #4285F4; border: 2.5px solid #fff; box-shadow: 0 0 0 4px rgba(66,133,244,.22); animation: udot 2s ease-in-out infinite; }
+@keyframes udot { 0%,100% { box-shadow: 0 0 0 4px rgba(66,133,244,.2); } 50% { box-shadow: 0 0 0 9px rgba(66,133,244,.06); } }
+
+/* ══════════════════════════════════
+   LEAFLET OVERRIDES
+   ══════════════════════════════════ */
+.leaflet-control-zoom { display: none !important; }
+.leaflet-control-attribution { font-size: 10px !important; }
+.leaflet-popup-content-wrapper {
+  border-radius: 14px !important;
+  box-shadow: var(--sh2) !important;
+  padding: 0 !important;
+  border: 1px solid var(--border) !important;
+}
+.leaflet-popup-content { margin: 0 !important; }
+.leaflet-popup-tip-container { display: none !important; }
+.leaflet-popup-close-button { display: none !important; }
+.leaflet-tooltip {
+  background: var(--white) !important; border: 1px solid var(--border2) !important;
+  border-radius: 8px !important; font-family: var(--font) !important;
+  box-shadow: var(--sh) !important; padding: 6px 10px !important; font-size: 12px !important;
+}
+.leaflet-tooltip::before { display: none !important; }
+
+@media (max-width: 600px) {
+  .search-wrap { max-width: 100%; }
+  .topbar { flex-wrap: wrap; }
+  .legend { display: none; }
+  .route-panel { width: calc(100vw - 24px); }
+  .profile-panel { width: calc(100vw - 24px); right: 12px; }
+}
+</style>
+</head>
+<body>
+
+<div id="map"></div>
+
+<div class="loader" id="loader">
+  <div class="loader-ring"></div>
+  <div class="loader-text">Loading SafeWalk...</div>
+</div>
+
+<div class="night-banner" id="nightBanner">Night mode — safety scores weighted higher</div>
+
+<!-- ── TOP BAR ── -->
+<div class="topbar">
+  <button class="logo-btn">
+    <span style="color:var(--red);">&#128205;</span> SafeWalk
+  </button>
+
+  <div class="search-wrap">
+    <span class="search-ico">&#128269;</span>
+    <input class="search-input" id="searchInput" type="text"
+           placeholder="Search any street, lane or area..." autocomplete="off"/>
+    <button class="search-clear" onclick="clearSearch()">&#215;</button>
+    <div class="search-dropdown" id="searchDrop"></div>
+  </div>
+
+  <div class="topbar-actions">
+    <button class="map-action-btn" id="routeBtn" onclick="toggleRoute()" title="Plan safe route">&#128739;</button>
+    <button class="map-action-btn" onclick="locateMe()" title="My location">&#9678;</button>
+    <a href="report.html" class="map-action-btn report-btn" title="Report incident">&#43;</a>
+    <button class="map-action-btn" id="profileBtn" onclick="toggleProfile()" title="My profile">&#128100;</button>
+  </div>
+</div>
+
+<!-- ── ROUTE PANEL ── -->
+<div class="route-panel" id="routePanel">
+  <div class="rp-header">
+    <span class="rp-title">&#128739; Plan Safe Route</span>
+    <button class="rp-close" onclick="toggleRoute()">&#215;</button>
+  </div>
+  <div class="rp-inputs">
+    <div class="rp-field">
+      <div class="rp-dot from"></div>
+      <input class="rp-input" id="rpFrom" placeholder="Starting point" type="text"/>
+      <button class="rp-gps-btn" onclick="fillGPS('from')" title="Use my location">&#9678;</button>
+    </div>
+    <div class="rp-connector" style="margin-left:15px;"></div>
+    <div class="rp-field">
+      <div class="rp-dot to"></div>
+      <input class="rp-input" id="rpTo" placeholder="Where are you going?" type="text"/>
+      <button class="rp-gps-btn" onclick="fillGPS('to')" title="Use my location">&#9678;</button>
+    </div>
+  </div>
+  <button class="rp-go-btn" id="rpGoBtn" onclick="planRoute()">Get Safe Route</button>
+  <div class="rp-result" id="rpResult">
+    <div class="rp-verdict" id="rpVerdict"></div>
+    <div class="rp-steps"  id="rpSteps"></div>
+    <div class="rp-danger-zones" id="rpDangerZones"></div>
+  </div>
+</div>
+
+<!-- ── STREET INFO PANEL ── -->
+<div class="street-panel" id="streetPanel">
+  <div class="sp-drag"></div>
+  <div class="sp-body">
+    <div class="sp-row1">
+      <div class="sp-name" id="spName"></div>
+      <button class="sp-x" onclick="closeSP()">&#215;</button>
+    </div>
+    <div class="sp-escalated" id="spEscalated" style="display:none;">
+      &#9888; This zone has been flagged and escalated to authorities
+    </div>
+    <div class="sp-score-row">
+      <div class="sp-score-num" id="spNum"></div>
+      <div class="sp-score-info">
+        <div class="sp-score-lbl" id="spLbl"></div>
+        <div class="sp-score-sub">out of 100</div>
+        <span class="sp-trend" id="spTrend"></span>
+      </div>
+    </div>
+    <div class="sp-grid">
+      <div class="sp-cell">
+        <div class="sp-cell-val" id="spDay"></div>
+        <div class="sp-cell-lbl">Day</div>
+      </div>
+      <div class="sp-cell">
+        <div class="sp-cell-val" id="spNight"></div>
+        <div class="sp-cell-lbl">Night</div>
+      </div>
+      <div class="sp-cell">
+        <div class="sp-cell-val" id="spReports"></div>
+        <div class="sp-cell-lbl">Reports</div>
+      </div>
+    </div>
+    <div class="sp-actions">
+      <button class="sp-btn primary" id="spRepBtn">Report here</button>
+      <button class="sp-btn secondary" onclick="routeToHere()">Route here</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── PROFILE PANEL ── -->
+<div class="profile-panel" id="profilePanel">
+  <div class="pp-user">
+    <div class="pp-avatar" id="ppInitial">?</div>
+    <div>
+      <div class="pp-name"  id="ppName">Loading...</div>
+      <div class="pp-email" id="ppEmail"></div>
+    </div>
+  </div>
+  <div class="pp-body">
+    <div class="pp-section-title">SOS Emergency Contacts</div>
+    <div id="ppContactList"></div>
+    <button class="add-contact-trigger" onclick="toggleAddContact()">+ Add emergency contact</button>
+    <div class="add-contact-wrap" id="addContactWrap">
+      <input class="ac-input" id="acName"  placeholder="Contact name"/>
+      <input class="ac-input" id="acPhone" placeholder="Phone number"/>
+      <input class="ac-input" id="acEmail" placeholder="Email address (gets SOS alert)"/>
+      <div class="ac-btns">
+        <button class="ac-btn save"   onclick="saveContact()">Save</button>
+        <button class="ac-btn cancel" onclick="toggleAddContact()">Cancel</button>
+      </div>
+    </div>
+    <div class="pp-divider"></div>
+    <a href="report.html" class="pp-action">&#128466; Report an incident</a>
+    <button class="pp-action red" onclick="doLogout()" style="width:100%;text-align:left;">&#128682; Sign out</button>
+  </div>
+</div>
+
+<!-- ── MAP CONTROLS ── -->
+<div class="map-controls">
+  <button class="mc-btn" onclick="map.zoomIn()">&#43;</button>
+  <button class="mc-btn" onclick="map.zoomOut()">&#8722;</button>
+  <button class="mc-locate" onclick="locateMe()" title="My location">&#9678;</button>
+</div>
+
+<!-- ── LEGEND ── -->
+<div class="legend">
+  <div class="leg-title">Safety Score</div>
+  <div class="leg-row"><span class="leg-dot" style="background:#0D9E5C;"></span>Safe (80–100)</div>
+  <div class="leg-row"><span class="leg-dot" style="background:#D97706;"></span>Moderate (55–79)</div>
+  <div class="leg-row"><span class="leg-dot" style="background:#DC4E12;"></span>Caution (30–54)</div>
+  <div class="leg-row"><span class="leg-dot" style="background:#C41717;"></span>Danger (0–29)</div>
+</div>
+
+<!-- ── SOS ── -->
+<button class="sos-btn" id="sosBtn" onclick="triggerSOS()">SOS</button>
+
+<!-- ── TOAST ── -->
+<div class="toast" id="toast"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="../js/delhi_roads.js"></script>
+<script src="../js/api.js"></script>
+<script>
+redirectIfNotAuth();
+
+// ── STATE ──
+let map, uMarker, uCircle, circles = [], routeLayers = [];
+let uLat = null, uLng = null, curStreet = null, searchTimer = null;
+let userContacts = [];
+
+// Night check
+const hr = new Date().getHours();
+if (hr >= 21 || hr < 6) document.getElementById('nightBanner').style.display = 'block';
+
+// ── INIT MAP ──
+// Light tiles: CartoDB Positron — clean, all streets visible, no access block
+map = L.map('map', { zoomControl: false }).setView([28.6139, 77.2090], 11);
+
+L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+  attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+  subdomains: 'abcd',
+  maxZoom: 21
+}).addTo(map);
+
+map.on('click', () => { closeSP(); closeAllPanels(); });
+
+// ── HELPERS ──
+function col(s) { return s>=80?'#0D9E5C':s>=55?'#D97706':s>=30?'#DC4E12':'#C41717'; }
+function lbl(s) { return s>=80?'Very Safe':s>=55?'Moderate':s>=30?'Caution':'Danger Zone'; }
+function colBg(s){ return s>=80?'rgba(13,158,92,.1)':s>=55?'rgba(217,119,6,.1)':s>=30?'rgba(220,78,18,.1)':'rgba(196,23,23,.1)'; }
+
+function toast(msg, type = '') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (type ? ' ' + type : '');
+  clearTimeout(t._t);
+  t._t = setTimeout(() => t.classList.remove('show'), 3200);
+}
+
+function closeAllPanels() {
+  document.getElementById('profilePanel').classList.remove('open');
+}
+
+// ── LOAD USER ──
+const user = getUser();
+if (user) {
+  document.getElementById('ppInitial').textContent = (user.name || '?')[0].toUpperCase();
+  document.getElementById('ppName').textContent    = user.name || 'User';
+  document.getElementById('ppEmail').textContent   = user.email || '';
+  loadContacts();
+}
+
+async function loadContacts() {
+  try {
+    const d = await apiFetch('/auth/me');
+    userContacts = d.user.emergency_contacts || [];
+    renderContacts();
+  } catch(e) {}
+}
+
+function renderContacts() {
+  const el = document.getElementById('ppContactList');
+  if (!userContacts.length) {
+    el.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:4px 0 8px;">No emergency contacts yet. Add one so SOS can notify them.</div>';
+    return;
+  }
+  el.innerHTML = userContacts.map((c, i) => `
+    <div class="contact-chip">
+      <div>
+        <div class="cc-name">${c.name}</div>
+        <div class="cc-phone">${c.phone || c.email || ''}</div>
+      </div>
+      <button class="cc-rm" onclick="removeContact(${i})" title="Remove">&#215;</button>
+    </div>`).join('');
+}
+
+function toggleAddContact() {
+  document.getElementById('addContactWrap').classList.toggle('open');
+}
+
+async function saveContact() {
+  const name  = document.getElementById('acName').value.trim();
+  const phone = document.getElementById('acPhone').value.trim();
+  const email = document.getElementById('acEmail').value.trim();
+  if (!name) { toast('Enter contact name', 'err'); return; }
+  if (!phone && !email) { toast('Enter phone or email', 'err'); return; }
+  userContacts.push({ name, phone, email });
+  try {
+    await apiFetch('/auth/emergency-contacts', { method: 'PUT', body: JSON.stringify({ contacts: userContacts }) });
+    renderContacts();
+    document.getElementById('acName').value = '';
+    document.getElementById('acPhone').value = '';
+    document.getElementById('acEmail').value = '';
+    document.getElementById('addContactWrap').classList.remove('open');
+    toast('Contact saved!', 'ok');
+  } catch(e) { toast('Save failed', 'err'); userContacts.pop(); }
+}
+
+async function removeContact(idx) {
+  userContacts.splice(idx, 1);
+  try {
+    await apiFetch('/auth/emergency-contacts', { method: 'PUT', body: JSON.stringify({ contacts: userContacts }) });
+    renderContacts();
+    toast('Contact removed', 'ok');
+  } catch(e) { toast('Failed', 'err'); }
+}
+
+function toggleProfile() {
+  document.getElementById('profilePanel').classList.toggle('open');
+  document.getElementById('routePanel').classList.remove('open');
+  document.getElementById('routeBtn').classList.remove('active');
+}
+
+// ── LOCATE ──
+function locateMe() {
+  if (!navigator.geolocation) { toast('GPS not supported', 'err'); return; }
+  toast('Finding your location...');
+  navigator.geolocation.getCurrentPosition(p => {
+    uLat = p.coords.latitude;
+    uLng = p.coords.longitude;
+    placeUserDot(uLat, uLng, p.coords.accuracy);
+    toast('Location found!', 'ok');
+  }, () => {
+    toast('Location denied — showing Delhi heatmap', 'err');
+  }, { enableHighAccuracy: true, timeout: 12000 });
+}
+
+function placeUserDot(lat, lng, acc) {
+  if (uMarker) uMarker.remove();
+  if (uCircle) uCircle.remove();
+  if (acc && acc < 500) {
+    uCircle = L.circle([lat, lng], { radius: acc, color: '#4285F4', fillColor: '#4285F4', fillOpacity: .06, weight: .8 }).addTo(map);
+  }
+  uMarker = L.marker([lat, lng], {
+    icon: L.divIcon({ className: '', html: '<div class="user-dot"></div>', iconSize: [14,14], iconAnchor: [7,7] })
+  }).addTo(map);
+}
+
+// ── ROAD NETWORK HEATMAP ──
+let roadLayer = null;
+let isNightMode = false;
+
+function getTimeMode() {
+  const h = new Date().getHours();
+  return (h >= 20 || h < 6) ? 'night' : 'day';
+}
+
+function getScore(props) {
+  return getTimeMode() === 'night' ? (props.score_night || 30) : (props.score_day || 60);
+}
+
+function renderRoadNetwork() {
+  if (roadLayer) { map.removeLayer(roadLayer); roadLayer = null; }
+  circles.forEach(c => c.remove()); circles = [];
+
+  const mode = getTimeMode();
+  isNightMode = mode === 'night';
+  console.log(`[SafeWalk] Rendering road network (${mode} mode, ${DELHI_ROAD_NETWORK.features.length} segments)`);
+
+  roadLayer = L.geoJSON(DELHI_ROAD_NETWORK, {
+    style: function(feature) {
+      const score = getScore(feature.properties);
+      return {
+        color: col(score),
+        weight: 7,
+        opacity: 0.82,
+        lineJoin: 'round',
+        lineCap: 'round'
+      };
+    },
+    onEachFeature: function(feature, layer) {
+      const p = feature.properties;
+      const score = getScore(p);
+      const c = col(score);
+
+      layer.bindTooltip(
+        `<div style="font-weight:600;color:${c};font-size:13px;">${score}/100</div>` +
+        `<div style="color:#5F6368;font-size:11px;">${p.name}</div>` +
+        `<div style="color:#9AA0A6;font-size:10px;margin-top:2px;">${isNightMode ? '🌙 Night Score' : '☀️ Day Score'}</div>`,
+        { direction: 'top', sticky: true }
+      );
+
+      layer.on('click', function(e) {
+        L.DomEvent.stopPropagation(e);
+        // Build a street-like object for the panel
+        const coords = feature.geometry.coordinates;
+        const mid = coords[Math.floor(coords.length / 2)];
+        showSP({
+          street_name: p.name,
+          score: score,
+          score_day: p.score_day,
+          score_night: p.score_night,
+          trend: p.trend || 'stable',
+          active_report_count: p.active_report_count || 0,
+          escalated: p.escalated || false,
+          lat: mid[1],
+          lng: mid[0]
+        });
+      });
+    }
+  }).addTo(map);
+
+  document.getElementById('loader').style.display = 'none';
+  console.log('[SafeWalk] Road network rendered successfully!');
+}
+
+// Also try loading API data as supplementary dots (fallback/extra)
+async function loadAll() {
+  try {
+    renderRoadNetwork();
+  } catch(e) {
+    console.error('[SafeWalk] Road network render failed:', e);
+    toast('Failed to render road network', 'err');
+    document.getElementById('loader').style.display = 'none';
+  }
+}
+
+async function loadNear(lat, lng) {
+  loadAll();
+}
+
+// ── STREET PANEL ──
+function showSP(s) {
+  curStreet = s;
+  const c = col(s.score);
+  document.getElementById('spName').textContent   = s.street_name;
+  document.getElementById('spNum').textContent    = s.score;
+  document.getElementById('spNum').style.color    = c;
+  document.getElementById('spLbl').textContent    = lbl(s.score);
+  document.getElementById('spLbl').style.color    = c;
+  document.getElementById('spDay').textContent    = s.score_day || s.score;
+  document.getElementById('spNight').textContent  = s.score_night || Math.max(0, s.score - 20);
+  document.getElementById('spReports').textContent= s.active_report_count || 0;
+
+  const tr = s.trend || 'stable';
+  const te = document.getElementById('spTrend');
+  te.textContent = tr === 'improving' ? '↑ Improving' : tr === 'worsening' ? '↓ Worsening' : '→ Stable';
+  te.className = 'sp-trend ' + (tr === 'improving' ? 't-up' : tr === 'worsening' ? 't-down' : 't-stab');
+
+  document.getElementById('spEscalated').style.display = s.escalated ? 'flex' : 'none';
+  document.getElementById('spRepBtn').onclick = () => {
+    location.href = `report.html?lat=${s.lat}&lng=${s.lng}&street=${encodeURIComponent(s.street_name)}`;
+  };
+
+  const el = document.getElementById('streetPanel');
+  el.style.display = 'block';
+  requestAnimationFrame(() => el.classList.add('open'));
+}
+
+function closeSP() {
+  const el = document.getElementById('streetPanel');
+  el.classList.remove('open');
+  setTimeout(() => el.style.display = 'none', 240);
+  curStreet = null;
+}
+
+function routeToHere() {
+  if (!curStreet) return;
+  document.getElementById('rpTo').value = curStreet.street_name;
+  if (uLat) document.getElementById('rpFrom').value = 'My Location';
+  closeSP();
+  toggleRoute();
+}
+
+// ── SEARCH ──
+document.getElementById('searchInput').addEventListener('input', function() {
+  clearTimeout(searchTimer);
+  const q = this.value.trim();
+  if (q.length < 3) { document.getElementById('searchDrop').classList.remove('open'); return; }
+  searchTimer = setTimeout(() => doSearch(q), 380);
+});
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('.search-wrap')) document.getElementById('searchDrop').classList.remove('open');
+});
+
+function clearSearch() {
+  document.getElementById('searchInput').value = '';
+  document.getElementById('searchDrop').classList.remove('open');
+}
+
+async function doSearch(q) {
+  try {
+    const r = await fetch(
+      `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=6&addressdetails=1`,
+      { headers: { 'Accept-Language': 'en' } }
+    );
+    const data = await r.json();
+    const drop = document.getElementById('searchDrop');
+    if (!data.length) { drop.classList.remove('open'); return; }
+    drop.innerHTML = data.map(r => {
+      const nm  = r.name || r.display_name.split(',')[0];
+      const sub = r.display_name.split(',').slice(1, 3).join(', ').trim();
+      const t   = r.type || r.class;
+      const ico = (t==='road'||t==='residential'||t==='street'||t==='footway'||t==='path'||t==='service') ? '&#128739;' :
+                  (t==='hospital'||t==='clinic') ? '&#127973;' :
+                  (t==='school'||t==='university') ? '&#127979;' : '&#128205;';
+      return `<div class="sresult" onclick="goToPlace(${r.lat},${r.lon},'${nm.replace(/'/g,"\\'")}')">
+        <div class="sresult-ico">${ico}</div>
+        <div>
+          <div class="sresult-name">${nm}</div>
+          <div class="sresult-sub">${sub}</div>
+        </div>
+      </div>`;
+    }).join('');
+    drop.classList.add('open');
+  } catch(e) {}
+}
+
+function goToPlace(lat, lng, name) {
+  map.setView([parseFloat(lat), parseFloat(lng)], 18);
+  document.getElementById('searchInput').value = name;
+  document.getElementById('searchDrop').classList.remove('open');
+  loadNear(lat, lng);
+}
+
+// ── ROUTE PANEL ──
+function toggleRoute() {
+  const p   = document.getElementById('routePanel');
+  const btn = document.getElementById('routeBtn');
+  const open = p.classList.toggle('open');
+  btn.classList.toggle('active', open);
+  document.getElementById('profilePanel').classList.remove('open');
+  if (open && uLat) document.getElementById('rpFrom').value = 'My Location';
+}
+
+function fillGPS(target) {
+  if (!navigator.geolocation) { toast('GPS not available', 'err'); return; }
+  navigator.geolocation.getCurrentPosition(p => {
+    uLat = p.coords.latitude; uLng = p.coords.longitude;
+    document.getElementById(target === 'from' ? 'rpFrom' : 'rpTo').value = 'My Location';
+    toast('Location set', 'ok');
+  }, () => toast('Location denied', 'err'));
+}
+
+async function planRoute() {
+  const fv = document.getElementById('rpFrom').value.trim();
+  const tv = document.getElementById('rpTo').value.trim();
+  if (!fv || !tv) { toast('Enter start and destination', 'err'); return; }
+
+  const btn = document.getElementById('rpGoBtn');
+  btn.textContent = 'Planning...'; btn.disabled = true;
+
+  try {
+    let fLat = uLat, fLng = uLng, tLat, tLng;
+
+    // Geocode FROM
+    if (fv !== 'My Location') {
+      const g = await geocodePlace(fv);
+      if (!g) { toast('Start location not found', 'err'); return; }
+      fLat = g.lat; fLng = g.lng;
+    }
+
+    // Geocode TO
+    const gt = await geocodePlace(tv);
+    if (!gt) { toast('Destination not found', 'err'); return; }
+    tLat = gt.lat; tLng = gt.lng;
+
+    if (!fLat || !tLat) { toast('Cannot get coordinates', 'err'); return; }
+
+    // ── REAL ROUTING via OSRM (foot profile = walking) ──
+    const osrmUrl = `https://router.project-osrm.org/route/v1/foot/${fLng},${fLat};${tLng},${tLat}?overview=full&geometries=geojson&steps=true`;
+    const osrmRes = await fetch(osrmUrl);
+    const osrmData = await osrmRes.json();
+
+    // Clear old route layers
+    routeLayers.forEach(l => map.removeLayer(l)); routeLayers = [];
+
+    if (!osrmData.routes || !osrmData.routes.length) {
+      toast('No route found', 'err'); return;
+    }
+
+    const route = osrmData.routes[0];
+    const coords = route.geometry.coordinates.map(c => [c[1], c[0]]);
+    const distKm = (route.distance / 1000).toFixed(1);
+    const mins   = Math.ceil(route.duration / 60);
+
+    // Get safety score for this route from our API
+    let verdict = 'moderate', avgScore = 70;
+    let dangerStreets = [];
+    try {
+      const safeData = await apiFetch(`/route?from_lat=${fLat}&from_lng=${fLng}&to_lat=${tLat}&to_lng=${tLng}`);
+      verdict      = safeData.safety_verdict || 'moderate';
+      avgScore     = safeData.avg_score      || 70;
+      dangerStreets= safeData.danger_streets || [];
+    } catch(e) {}
+
+    // Route color based on safety
+    const routeColor = verdict === 'safe' ? '#0D9E5C' : verdict === 'dangerous' ? '#C41717' : '#D97706';
+    const routeLine = L.polyline(coords, {
+      color: routeColor, weight: 5, opacity: 0.85,
+      lineJoin: 'round', lineCap: 'round'
+    }).addTo(map);
+    routeLayers.push(routeLine);
+
+    // Start / end markers
+    const startM = L.circleMarker([fLat, fLng], { radius: 8, color: '#4285F4', fillColor: '#4285F4', fillOpacity: 1, weight: 2.5 }).addTo(map);
+    const endM   = L.circleMarker([tLat, tLng], { radius: 8, color: routeColor, fillColor: routeColor, fillOpacity: 1, weight: 2.5 }).addTo(map);
+    routeLayers.push(startM, endM);
+
+    map.fitBounds(routeLine.getBounds(), { padding: [70, 70] });
+
+    // Show result UI
+    const vColors = { safe: { bg: 'rgba(13,158,92,.1)', color: '#0D9E5C' }, moderate: { bg: 'rgba(217,119,6,.1)', color: '#D97706' }, dangerous: { bg: 'rgba(196,23,23,.1)', color: '#C41717' } };
+    const vLabels = { safe: '✓ Route is SAFE', moderate: '⚠ Route is MODERATE', dangerous: '✕ Route is DANGEROUS' };
+    const vc = vColors[verdict] || vColors.moderate;
+    const ve = document.getElementById('rpVerdict');
+    ve.style.background = vc.bg; ve.style.color = vc.color;
+    ve.innerHTML = `<span>${vLabels[verdict]}</span><span style="font-size:12px;font-weight:500;color:var(--text2);margin-left:auto;">${distKm}km · ${mins} min</span>`;
+
+    // Turn-by-turn steps
+    const steps = route.legs?.[0]?.steps || [];
+    document.getElementById('rpSteps').innerHTML = steps.slice(0, 8).map((s, i) => {
+      const d = s.distance > 1000 ? (s.distance / 1000).toFixed(1) + ' km' : Math.round(s.distance) + ' m';
+      const instruction = s.maneuver?.type === 'depart' ? `Start on ${s.name || 'route'}` :
+                          s.maneuver?.type === 'arrive' ? 'Arrive at destination' :
+                          s.maneuver?.type === 'turn'   ? `Turn ${s.maneuver.modifier || ''} onto ${s.name || 'road'}` :
+                          s.name ? `Continue on ${s.name}` : 'Continue';
+      return `<div class="rp-step">
+        <div class="rp-step-n">${i + 1}</div>
+        <div class="rp-step-txt">${instruction}</div>
+        <div class="rp-step-dist">${d}</div>
+      </div>`;
+    }).join('');
+
+    // Danger zones
+    if (dangerStreets.length) {
+      document.getElementById('rpDangerZones').innerHTML =
+        `<div class="rp-dz-title">Streets to watch out for</div>` +
+        dangerStreets.slice(0, 3).map(d => `
+          <div class="rp-dz-item">
+            <span>${d.street_name}</span>
+            <span style="font-weight:700;color:#C41717;font-size:12px;">Score: ${d.score}</span>
+          </div>`).join('');
+    }
+
+    document.getElementById('rpResult').classList.add('open');
+
+  } catch(e) {
+    toast('Route planning failed — check your connection', 'err');
+    console.error(e);
+  } finally {
+    btn.textContent = 'Get Safe Route'; btn.disabled = false;
+  }
+}
+
+// ── SOS ──
+async function triggerSOS() {
+  const btn = document.getElementById('sosBtn');
+  btn.textContent = '...'; btn.disabled = true;
+
+  navigator.geolocation.getCurrentPosition(async p => {
+    try {
+      const res = await apiFetch('/sos', {
+        method: 'POST',
+        body: JSON.stringify({ lat: p.coords.latitude, lng: p.coords.longitude })
+      });
+      const n = res.notified || 0;
+      if (n > 0) {
+        toast(`SOS sent! ${n} emergency contact(s) notified`, 'ok');
+      } else {
+        toast('SOS sent! Open profile to add emergency contacts', 'ok');
+        toggleProfile();
+      }
+    } catch(e) {
+      toast('SOS alert triggered', 'ok');
+    } finally {
+      btn.textContent = 'SOS'; btn.disabled = false;
+    }
+  }, () => {
+    toast('Enable GPS for SOS to work', 'err');
+    btn.textContent = 'SOS'; btn.disabled = false;
+  });
+}
+
+function doLogout() { clearSession(); location.href = 'login.html'; }
+
+// ── START ──
+// Render the full Delhi road network immediately, then try GPS
+loadAll();
+locateMe();
+
+// Re-render every 30 minutes to catch day/night transition
+setInterval(() => {
+  const wasNight = isNightMode;
+  const nowNight = getTimeMode() === 'night';
+  if (wasNight !== nowNight) {
+    console.log('[SafeWalk] Time mode changed! Re-rendering...');
+    toast(nowNight ? '🌙 Switching to Night Safety Scores' : '☀️ Switching to Day Safety Scores', 'ok');
+    renderRoadNetwork();
+  }
+}, 60000 * 5);
+</script>
+</body>
+</html>

@@ -1,0 +1,103 @@
+<div class="admin-wrapper">
+  <div class="admin-sidebar">
+    <div class="sidebar-brand">SafeWalk Admin</div>
+    <nav>
+      <button [class.active]="activeTab==='dashboard'" (click)="activeTab='dashboard'">Dashboard</button>
+      <button [class.active]="activeTab==='reports'"   (click)="activeTab='reports'">Open Reports</button>
+      <button [class.active]="activeTab==='hotspots'"  (click)="activeTab='hotspots'">Hotspots</button>
+    </nav>
+    <a routerLink="/map" class="sidebar-link">← Back to Map</a>
+  </div>
+
+  <div class="admin-content">
+    <!-- Dashboard tab -->
+    <div *ngIf="activeTab==='dashboard' && analytics">
+      <h2>Dashboard</h2>
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-value">{{ analytics.summary.total_reports }}</div>
+          <div class="stat-label">Total reports</div>
+        </div>
+        <div class="stat-card danger">
+          <div class="stat-value">{{ analytics.summary.open_reports }}</div>
+          <div class="stat-label">Open reports</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">{{ analytics.summary.total_users }}</div>
+          <div class="stat-label">Users</div>
+        </div>
+        <div class="stat-card danger">
+          <div class="stat-value">{{ analytics.summary.danger_streets }}</div>
+          <div class="stat-label">Danger streets</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">{{ analytics.summary.sos_today }}</div>
+          <div class="stat-label">SOS today</div>
+        </div>
+      </div>
+
+      <h3>Incidents by type</h3>
+      <div class="breakdown-list">
+        <div class="breakdown-item" *ngFor="let item of analytics.incident_breakdown">
+          <span>{{ item.incident_type }}</span>
+          <div class="bar-wrap">
+            <div class="bar" [style.width]="(item.count / analytics.summary.total_reports * 100) + '%'"></div>
+          </div>
+          <span class="count">{{ item.count }}</span>
+        </div>
+      </div>
+
+      <h3>Worst streets right now</h3>
+      <table class="data-table">
+        <thead><tr><th>Street</th><th>Score</th><th>Reports</th></tr></thead>
+        <tbody>
+          <tr *ngFor="let s of analytics.worst_streets">
+            <td>{{ s.street_name }}</td>
+            <td><span class="score-pill" [style.background]="s.score < 30 ? '#E24B4A' : '#D85A30'">{{ s.score }}</span></td>
+            <td>{{ s.active_report_count }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Reports tab -->
+    <div *ngIf="activeTab==='reports'">
+      <h2>Open Reports ({{ reports.length }})</h2>
+      <table class="data-table">
+        <thead>
+          <tr><th>Street</th><th>Type</th><th>Severity</th><th>Reported</th><th>Action</th></tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let r of reports">
+            <td>{{ r.street_name }}</td>
+            <td>{{ r.incident_type }}</td>
+            <td>
+              <span class="severity-pill" [style.background]="getSeverityColor(r.severity)">
+                {{ getSeverityLabel(r.severity) }}
+              </span>
+            </td>
+            <td>{{ r.reported_at | date:'dd MMM, HH:mm' }}</td>
+            <td>
+              <button class="btn-resolve" (click)="resolveReport(r.id)">Resolve</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Hotspots tab -->
+    <div *ngIf="activeTab==='hotspots'">
+      <h2>Danger Hotspots</h2>
+      <div class="hotspot-cards">
+        <div class="hotspot-card" *ngFor="let h of hotspots">
+          <div class="hotspot-score" [style.color]="h.score < 30 ? '#E24B4A' : '#D85A30'">
+            {{ h.score }}
+          </div>
+          <div class="hotspot-name">{{ h.street_name }}</div>
+          <div class="hotspot-meta">{{ h.open_reports }} open reports</div>
+          <div class="escalated-tag" *ngIf="h.escalated">ESCALATED</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

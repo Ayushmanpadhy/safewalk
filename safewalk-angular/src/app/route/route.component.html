@@ -1,0 +1,64 @@
+<div class="page-container">
+  <div class="page-header">
+    <a routerLink="/map" class="back-btn">← Back to Map</a>
+    <h2>Safe Route Planner</h2>
+    <p>Find a route that avoids dangerous streets</p>
+  </div>
+
+  <div class="route-form">
+    <div class="location-input">
+      <label>From</label>
+      <div class="input-row">
+        <input type="text" [(ngModel)]="from.name" placeholder="Start location name" />
+        <input type="text" [(ngModel)]="from.lat"  placeholder="Latitude" />
+        <input type="text" [(ngModel)]="from.lng"  placeholder="Longitude" />
+        <button type="button" class="btn-gps" (click)="useMyLocation('from')">GPS</button>
+      </div>
+    </div>
+    <div class="location-input">
+      <label>To</label>
+      <div class="input-row">
+        <input type="text" [(ngModel)]="to.name" placeholder="Destination name" />
+        <input type="text" [(ngModel)]="to.lat"  placeholder="Latitude" />
+        <input type="text" [(ngModel)]="to.lng"  placeholder="Longitude" />
+        <button type="button" class="btn-gps" (click)="useMyLocation('to')">GPS</button>
+      </div>
+    </div>
+
+    <div class="error-msg" *ngIf="error">{{ error }}</div>
+    <button class="btn-primary" (click)="planRoute()" [disabled]="loading">
+      {{ loading ? 'Planning...' : 'Find Safe Route' }}
+    </button>
+  </div>
+
+  <div class="route-result" *ngIf="result">
+    <div class="verdict-banner" [style.background]="getVerdictColor(result.safety_verdict)">
+      Route is {{ result.safety_verdict | uppercase }} — Avg score: {{ result.avg_score }}/100
+    </div>
+
+    <div class="route-stats">
+      <div class="stat"><label>Waypoints</label><span>{{ result.waypoints.length }}</span></div>
+      <div class="stat"><label>Distance</label><span>{{ result.direct_dist_m }}m</span></div>
+      <div class="stat"><label>Avoided streets</label><span>{{ result.danger_streets.length }}</span></div>
+    </div>
+
+    <div class="waypoints-list">
+      <h4>Route waypoints</h4>
+      <div class="waypoint" *ngFor="let wp of result.waypoints; let i = index">
+        <span class="wp-num">{{ i + 1 }}</span>
+        <span class="wp-name">{{ wp.label || wp.street_name || 'Waypoint' }}</span>
+        <span class="wp-score" [style.color]="mapService.getScoreColor(wp.score || 100)">
+          Score: {{ wp.score || 100 }}
+        </span>
+      </div>
+    </div>
+
+    <div class="danger-list" *ngIf="result.danger_streets.length">
+      <h4>Avoided danger zones</h4>
+      <div class="danger-item" *ngFor="let d of result.danger_streets">
+        <span>{{ d.street_name }}</span>
+        <span class="danger-score">Score: {{ d.score }}</span>
+      </div>
+    </div>
+  </div>
+</div>

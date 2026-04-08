@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Sign In — SafeWalk</title>
+<link rel="stylesheet" href="../css/style.css"/>
+</head>
+<body>
+<div class="auth-page">
+  <div class="auth-left">
+    <div class="auth-left-bg"></div>
+    <div class="auth-left-pattern"></div>
+    <div class="auth-left-content">
+      <div class="auth-brand-big">Safe<span>Walk</span></div>
+      <div class="auth-brand-sub">Real-time street safety scores powered by the community. Know the danger before you walk into it.</div>
+      <div class="auth-feature-list">
+        <div class="auth-feat"><div class="auth-feat-ico" style="background:rgba(229,57,53,.1);">&#128205;</div>Live safety heatmap for every street</div>
+        <div class="auth-feat"><div class="auth-feat-ico" style="background:rgba(13,158,92,.1);">&#128739;</div>Real turn-by-turn safe routing</div>
+        <div class="auth-feat"><div class="auth-feat-ico" style="background:rgba(229,57,53,.1);">&#128680;</div>One-tap SOS with GPS to your contacts</div>
+        <div class="auth-feat"><div class="auth-feat-ico" style="background:rgba(217,119,6,.1);">&#128247;</div>Photo-verified incident reports</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="auth-right">
+    <div class="auth-box">
+      <div class="auth-logo">
+        <div class="auth-logo-mark">SW</div>
+        <span class="auth-logo-name">SafeWalk</span>
+      </div>
+      <div class="auth-title">Welcome back</div>
+      <div class="auth-sub">Sign in to access the live safety map</div>
+
+      <div class="msg-err" id="errMsg"></div>
+
+      <form id="loginForm">
+        <div class="field">
+          <label>Email address</label>
+          <input type="email" id="email" placeholder="you@example.com" required autocomplete="email"/>
+        </div>
+        <div class="field">
+          <label>Password</label>
+          <input type="password" id="password" placeholder="Your password" required/>
+        </div>
+        <button type="submit" class="btn btn-primary btn-full" id="submitBtn" style="height:44px;font-size:15px;font-weight:600;margin-top:4px;">
+          Sign In
+        </button>
+      </form>
+
+      <div class="auth-foot" style="margin-top:1.25rem;">
+        No account? <a href="register.html">Create one free →</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="../js/api.js"></script>
+<script>
+if (isLoggedIn()) window.location.href = 'map.html';
+
+document.getElementById('loginForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const btn = document.getElementById('submitBtn');
+  const err = document.getElementById('errMsg');
+  btn.innerHTML = '<span class="spinner"></span> Signing in...';
+  btn.disabled = true;
+  err.classList.remove('show');
+  try {
+    const data = await apiFetch('/auth/login', { method: 'POST', body: JSON.stringify({
+      email:    document.getElementById('email').value,
+      password: document.getElementById('password').value
+    })});
+    saveSession(data);
+    window.location.href = data.user.role === 'user' ? 'map.html' : 'admin.html';
+  } catch (ex) {
+    err.textContent = ex.message;
+    err.classList.add('show');
+    btn.textContent = 'Sign In';
+    btn.disabled = false;
+  }
+});
+</script>
+</body>
+</html>
