@@ -24,6 +24,7 @@ async function run() {
       name VARCHAR(100) NOT NULL,
       email VARCHAR(150) NOT NULL UNIQUE,
       password VARCHAR(255) NOT NULL,
+      phone VARCHAR(20),
       role ENUM('user','admin') DEFAULT 'user',
       trust_score FLOAT DEFAULT 1.0,
       is_verified BOOLEAN DEFAULT false,
@@ -91,6 +92,9 @@ async function run() {
   `);
 
   console.log('[migrate] Schema ready.');
+
+  // Add phone column if missing (for tables created before this fix)
+  try { await conn.query(`ALTER TABLE users ADD COLUMN phone VARCHAR(20)`); } catch(e) { /* already exists */ }
 
   // ── CHECK IF DATA ALREADY SEEDED ─────────────────────────────────────────────
   const [rows] = await conn.query(`SELECT COUNT(*) as cnt FROM street_safety_scores`);
