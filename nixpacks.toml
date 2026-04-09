@@ -1,0 +1,11 @@
+[phases.setup]
+nixPkgs = ["nodejs_20"]
+
+[phases.install]
+cmds = ["cd safewalk-backend && npm install"]
+
+[phases.build]
+cmds = []
+
+[start]
+cmd = "cd safewalk-backend && node auto_migrate.js && node server.js"
