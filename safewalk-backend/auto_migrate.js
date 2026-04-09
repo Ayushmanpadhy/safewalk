@@ -25,9 +25,11 @@ async function run() {
       email VARCHAR(150) NOT NULL UNIQUE,
       password VARCHAR(255) NOT NULL,
       phone VARCHAR(20),
-      role ENUM('user','admin') DEFAULT 'user',
+      role ENUM('user','admin','authority') DEFAULT 'user',
       trust_score FLOAT DEFAULT 1.0,
+      emergency_contacts JSON DEFAULT NULL,
       is_verified BOOLEAN DEFAULT false,
+      is_active BOOLEAN DEFAULT true,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
   `);
@@ -93,8 +95,12 @@ async function run() {
 
   console.log('[migrate] Schema ready.');
 
-  // Add phone column if missing (for tables created before this fix)
-  try { await conn.query(`ALTER TABLE users ADD COLUMN phone VARCHAR(20)`); } catch(e) { /* already exists */ }
+  // Proactive Patching for existing tables
+  console.log('[migrate] Checking for missing columns...');
+  try { await conn.query(`ALTER TABLE users ADD COLUMN phone VARCHAR(20)`); } catch(e) {}
+  try { await conn.query(`ALTER TABLE users ADD COLUMN emergency_contacts JSON DEFAULT NULL`); } catch(e) {}
+  try { await conn.query(`ALTER TABLE users ADD COLUMN is_active BOOLEAN DEFAULT true`); } catch(e) {}
+  try { await conn.query(`ALTER TABLE users MODIFY COLUMN role ENUM('user','admin','authority') DEFAULT 'user'`); } catch(e) {}
 
   // ── CHECK IF DATA ALREADY SEEDED ─────────────────────────────────────────────
   const [rows] = await conn.query(`SELECT COUNT(*) as cnt FROM street_safety_scores`);
