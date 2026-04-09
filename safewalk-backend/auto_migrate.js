@@ -14,10 +14,8 @@ async function run() {
   console.log('[migrate] Connecting to Railway MySQL...');
   const conn = await mysql.createConnection(MYSQL_URL);
 
-  // ── CREATE DATABASE ──────────────────────────────────────────────────────────
-  await conn.query(`CREATE DATABASE IF NOT EXISTS safewalk CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
-  await conn.query(`USE safewalk`);
-  console.log('[migrate] Database ready.');
+  // Railway's MYSQL_URL already includes the database name — just use it directly
+  console.log('[migrate] Connected to Railway MySQL.');
 
   // ── SCHEMA ───────────────────────────────────────────────────────────────────
   await conn.query(`
