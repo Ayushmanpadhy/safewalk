@@ -141,6 +141,10 @@ async function renderRoadNetwork() {
           geojsonData = ALL_ROADS_DATA;
           source = 'embedded';
           console.log('[SafeWalk] Using embedded data:', ALL_ROADS_DATA.features.length, 'features');
+      } else if (typeof DELHI_ROAD_NETWORK !== 'undefined' && DELHI_ROAD_NETWORK.features) {
+          geojsonData = DELHI_ROAD_NETWORK;
+          source = 'embedded';
+          console.log('[SafeWalk] Using embedded data:', DELHI_ROAD_NETWORK.features.length, 'features');
       } else {
           console.error('[SafeWalk] No embedded data available either!');
           toast("No road data available", "err");
