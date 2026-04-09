@@ -33,7 +33,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use('/uploads', express.static(uploadDir));
 
-// Routes
+// API Routes
 app.use('/api/auth',    authRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/scores',  scoreRoutes);
@@ -46,7 +46,16 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', service: 'SafeWalk API', time: new Date().toISOString() });
 });
 
-// 404
+// Serve the frontend static files (MUST come before 404 handler)
+const frontendDir = path.join(__dirname, '../sw-final');
+app.use(express.static(frontendDir));
+
+// Connect root path to the live map
+app.get('/', (req, res) => {
+  res.redirect('/pages/map.html');
+});
+
+// 404 (catch-all — must be LAST)
 app.use((req, res) => {
   res.status(404).json({ error: `Route ${req.originalUrl} not found` });
 });
@@ -55,15 +64,6 @@ app.use((req, res) => {
 app.use((err, req, res, next) => {
   console.error('Unhandled error:', err);
   res.status(500).json({ error: 'Internal server error' });
-});
-
-// Serve the frontend static files
-const frontendDir = path.join(__dirname, '../sw-final');
-app.use(express.static(frontendDir));
-
-// Connect root path to the live map
-app.get('/', (req, res) => {
-  res.redirect('/pages/map.html');
 });
 
 // Start
