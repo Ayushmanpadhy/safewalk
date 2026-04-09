@@ -1,6 +1,7 @@
 // js/api.js — SafeWalk shared helpers
+const isFile = window.location.protocol === 'file:';
 const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-const BACKEND_URL = window.swEnv?.API_URL || (isLocal ? 'http://localhost:5000' : 'https://your-backend-url.com');
+const BACKEND_URL = window.swEnv?.API_URL || (isFile || isLocal ? 'http://localhost:5000' : '');
 const API = `${BACKEND_URL}/api`;
 window.API_BASE = BACKEND_URL;
 

@@ -57,6 +57,15 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Internal server error' });
 });
 
+// Serve the frontend static files
+const frontendDir = path.join(__dirname, '../sw-final');
+app.use(express.static(frontendDir));
+
+// Connect root path to the live map
+app.get('/', (req, res) => {
+  res.redirect('/pages/map.html');
+});
+
 // Start
 app.listen(PORT, () => {
   console.log(`SafeWalk API running on http://localhost:${PORT}`);
