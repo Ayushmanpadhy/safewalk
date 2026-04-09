@@ -5,6 +5,8 @@ redirectIfNotAuth();
 let map;
 let uLat = null, uLng = null;
 let uMarker = null, uAccuracyCircle = null;
+let watchId = null;
+let isNavigating = false;
 let curStreet = null;
 let userContacts = [];
 let routeControl = null;
@@ -168,6 +170,14 @@ async function renderRoadNetwork() {
       return { color: col(score), weight: 6, opacity: 0.85 };
     },
     onEachFeature: function(feature, layer) {
+      if (feature.properties.street_name) {
+          layer.bindTooltip(feature.properties.street_name, {
+              permanent: true,
+              direction: 'center',
+              className: 'street-label',
+              offset: [0, 0]
+          });
+      }
       layer.on('click', (e) => {
         L.DomEvent.stopPropagation(e);
         const s = feature.properties;
@@ -192,36 +202,52 @@ async function renderRoadNetwork() {
 
 function locateMe() {
   if (!navigator.geolocation) { toast('GPS not supported', 'err'); return; }
-  toast('Finding location...');
-  document.getElementById('loader').style.display = 'flex'; // Optional re-loader
-  navigator.geolocation.getCurrentPosition(p => {
+  toast('Starting live GPS tracking...');
+  document.getElementById('loader').style.display = 'flex';
+  
+  if (watchId) navigator.geolocation.clearWatch(watchId);
+
+  let initialFound = false;
+
+  watchId = navigator.geolocation.watchPosition(p => {
     uLat = p.coords.latitude;
     uLng = p.coords.longitude;
     
-    if (uMarker) {
-        map.removeLayer(uMarker);
-        map.removeLayer(uAccuracyCircle);
+    if (!uMarker) {
+        uAccuracyCircle = L.circle([uLat, uLng], {
+            radius: p.coords.accuracy, color: '#4285F4', fillColor: '#4285F4', fillOpacity: 0.15, weight: 1
+        }).addTo(map);
+
+        const icon = L.divIcon({
+            className: 'user-marker',
+            html: `<div style="width:20px;height:20px;background:#4285F4;border:3px solid #fff;border-radius:50%;box-shadow:0 0 10px rgba(0,0,0,0.5);"></div>`,
+            iconSize: [20, 20],
+            iconAnchor: [10, 10]
+        });
+
+        uMarker = L.marker([uLat, uLng], { icon: icon }).addTo(map);
+    } else {
+        // Update existing marker
+        uMarker.setLatLng([uLat, uLng]);
+        uAccuracyCircle.setLatLng([uLat, uLng]);
+        uAccuracyCircle.setRadius(p.coords.accuracy);
     }
 
-    uAccuracyCircle = L.circle([uLat, uLng], {
-        radius: p.coords.accuracy, color: '#4285F4', fillColor: '#4285F4', fillOpacity: 0.15, weight: 1
-    }).addTo(map);
-
-    const icon = L.divIcon({
-        className: 'user-marker',
-        html: `<div style="width:20px;height:20px;background:#4285F4;border:3px solid #fff;border-radius:50%;box-shadow:0 0 10px rgba(0,0,0,0.5);"></div>`,
-        iconSize: [20, 20],
-        iconAnchor: [10, 10]
-    });
-
-    uMarker = L.marker([uLat, uLng], { icon: icon }).addTo(map);
-    map.setView([uLat, uLng], 15);
-    toast('Location found!', 'ok');
-    document.getElementById('loader').style.display = 'none';
+    if (!initialFound) {
+        map.setView([uLat, uLng], 15);
+        toast('Location found!', 'ok');
+        document.getElementById('loader').style.display = 'none';
+        initialFound = true;
+    } else if (isNavigating) {
+        // Auto-pan map if we are navigating
+        map.panTo([uLat, uLng], { animate: true, duration: 1 });
+    }
   }, () => {
-    toast('Location denied', 'err');
-    document.getElementById('loader').style.display = 'none';
-  }, { enableHighAccuracy: true });
+    if (!initialFound) {
+      toast('Location denied or failed', 'err');
+      document.getElementById('loader').style.display = 'none';
+    }
+  }, { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 });
 }
 
 // ── SEARCH USING PHOTON KOMOOT ──
@@ -244,8 +270,9 @@ function setupAutocomplete() {
                         const parts = (r.text || 'Place').split(',');
                         const name = parts[0].trim();
                         const address = parts.slice(1).join(',').trim();
+                        const rawText = (r.text || '').replace(/'/g, "\\'");
                         return `
-                        <div class="search-item" onclick="selectSearch('${r.magicKey}', '${name.replace(/'/g, "\\'")}')">
+                        <div class="search-item" onclick="selectSearch('${r.magicKey}', '${rawText}')">
                             <span style="font-size:16px;">📍</span> ${name}<br>
                             <span style="font-size:10px;color:#888;">${address}</span>
                         </div>
@@ -260,17 +287,61 @@ function setupAutocomplete() {
         }, 500);
     });
 }
-async function selectSearch(magicKey, name) {
-    document.getElementById('searchInput').value = name.split(',')[0];
+let currentPlace = null;
+async function selectSearch(magicKey, nameRaw) {
+    const parts = nameRaw.split(',');
+    const title = parts[0].trim();
+    const address = parts.slice(1).join(',').trim() || 'Details not available';
+    
+    document.getElementById('searchInput').value = title;
     document.getElementById('searchResults').classList.remove('show');
     try {
         const url = `https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates?f=pjson&magicKey=${magicKey}&maxLocations=1`;
         const res = await (await fetch(url)).json();
         if (res.candidates && res.candidates.length > 0) {
-            map.flyTo([res.candidates[0].location.y, res.candidates[0].location.x], 17);
+            const loc = res.candidates[0].location;
+            
+            if (window.placeMarker) map.removeLayer(window.placeMarker);
+            window.placeMarker = L.marker([loc.y, loc.x]).addTo(map);
+            
+            map.flyTo([loc.y, loc.x], 16, { animate: true, duration: 1.5 });
+            openPlacePanel(title, address, loc.y, loc.x);
         }
     } catch(e) {}
 }
+
+function openPlacePanel(title, address, lat, lng) {
+    currentPlace = { title, lat, lng };
+    document.getElementById('placeTitle').textContent = title;
+    document.getElementById('placeAddress').textContent = address;
+    
+    document.getElementById('placeImg').style.backgroundColor = '#e0e0e0';
+
+    const p = document.getElementById('placePanel');
+    p.style.display = 'block';
+    requestAnimationFrame(() => p.classList.add('open'));
+    if (typeof closeSP === 'function') closeSP();
+}
+
+window.closePlacePanel = function() {
+    const p = document.getElementById('placePanel');
+    p.classList.remove('open');
+    setTimeout(() => p.style.display = 'none', 240);
+    if (window.placeMarker) { map.removeLayer(window.placeMarker); window.placeMarker = null; }
+    currentPlace = null;
+};
+
+window.routeToPlacePanel = function() {
+    if (!currentPlace) return;
+    document.getElementById('rpTo').value = currentPlace.title;
+    routePts.To = { lat: currentPlace.lat, lng: currentPlace.lng };
+    if (typeof uLat !== 'undefined' && uLat) {
+        document.getElementById('rpFrom').value = 'My Location';
+        routePts.From = { lat: uLat, lng: uLng };
+    }
+    closePlacePanel();
+    toggleRoute();
+};
 
 
 // ── ROUTING (OSRM Free API) ──
@@ -280,6 +351,7 @@ async function selectSearch(magicKey, name) {
     const box = document.getElementById('rp' + t + 'Results');
     inp.addEventListener('input', (e) => {
         clearTimeout(searchTimeout);
+        routePts[t] = null; // Clear old coords so auto-geocode runs on submit
         const q = e.target.value.trim();
         if (q.length < 3) { box.style.display = 'none'; return; }
         searchTimeout = setTimeout(async () => {
@@ -324,12 +396,45 @@ function fillGPS(t) {
   routePts[tt] = { lat: uLat, lng: uLng };
 }
 
-function planRoute() {
-  if (!routePts.From || !routePts.To) { toast('Please select valid From and To locations from suggestions', 'err'); return; }
-  
-  const btn = document.getElementById('rpGoBtn');
-  btn.textContent = 'Calculating safe route...'; btn.disabled = true;
+// Helper: geocode any text to lat/lng using ArcGIS
+async function geocodeText(text) {
+    const url = `https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates?f=pjson&singleLine=${encodeURIComponent(text)}&maxLocations=1`;
+    const res = await (await fetch(url)).json();
+    if (res.candidates && res.candidates.length > 0) {
+        return { lat: res.candidates[0].location.y, lng: res.candidates[0].location.x };
+    }
+    return null;
+}
 
+async function planRoute() {
+  const fromVal = document.getElementById('rpFrom').value.trim();
+  const toVal = document.getElementById('rpTo').value.trim();
+  
+  if (!fromVal || !toVal) { toast('Please enter both From and To locations', 'err'); return; }
+
+  const btn = document.getElementById('rpGoBtn');
+  btn.innerHTML = '<span>Finding locations...</span>'; btn.disabled = true;
+
+  // Auto-geocode From if not already resolved
+  if (!routePts.From) {
+      if (fromVal === 'My Location' && uLat) {
+          routePts.From = { lat: uLat, lng: uLng };
+      } else {
+          const result = await geocodeText(fromVal);
+          if (result) { routePts.From = result; }
+          else { toast('Could not find starting location', 'err'); btn.innerHTML = '<span>Get Safe Route</span><div class="rp-go-ico">→</div>'; btn.disabled = false; return; }
+      }
+  }
+
+  // Auto-geocode To if not already resolved
+  if (!routePts.To) {
+      const result = await geocodeText(toVal);
+      if (result) { routePts.To = result; }
+      else { toast('Could not find destination', 'err'); btn.innerHTML = '<span>Get Safe Route</span><div class="rp-go-ico">→</div>'; btn.disabled = false; return; }
+  }
+
+  btn.innerHTML = '<span>Calculating safe route...</span>';
+  
   if (routeControl) { map.removeControl(routeControl); }
 
   routeControl = L.Routing.control({
@@ -343,14 +448,23 @@ function planRoute() {
       addWaypoints: false,
       draggableWaypoints: false,
       fitSelectedRoutes: true,
-      createMarker: function() { return null; } // Don't create extra markers overlaying start/end
+      createMarker: function(i, wp) {
+          const type = i === 0 ? 'From' : 'To';
+          const icon = L.divIcon({
+              className: 'route-marker ' + type.toLowerCase(),
+              html: `<div class="marker-pin">${type === 'From' ? 'A' : 'B'}</div>`,
+              iconSize: [30, 30],
+              iconAnchor: [15, 30]
+          });
+          return L.marker(wp.latLng, { icon: icon });
+      }
   }).addTo(map);
 
   routeControl.on('routesfound', function(e) {
       const routes = e.routes;
       const summary = routes[0].summary;
       
-      btn.textContent = 'Get Safe Route'; btn.disabled = false;
+      btn.innerHTML = '<span>Get Safe Route</span><div class="rp-go-ico">→</div>'; btn.disabled = false;
       document.getElementById('rpResult').classList.add('open');
 
       const dist = (summary.totalDistance / 1000).toFixed(1);
@@ -380,21 +494,75 @@ function planRoute() {
       } else {
           document.getElementById('rpDangerZones').innerHTML = '';
       }
-      toggleRoute(); // auto close panel or stay? leave it open
+
+      // ── ZOOM FIT TO SHOW FULL PATH ──
+      const bounds = L.latLngBounds([
+          [routePts.From.lat, routePts.From.lng],
+          [routePts.To.lat, routePts.To.lng]
+      ]);
+      map.fitBounds(bounds, { padding: [100, 100], animate: true });
+      
+      // Keep route panel open but maybe collapse the bottom parts
+      // toggleRoute(); // don't auto close here
   });
 
   routeControl.on('routingerror', function(e) {
       toast('Routing failed. Try different locations.', 'err');
-      btn.textContent = 'Get Safe Route'; btn.disabled = false;
+      btn.innerHTML = '<span>Get Safe Route</span><div class="rp-go-ico">→</div>'; btn.disabled = false;
   });
 }
 
 function clearRoute() {
-    if (routeControl) map.removeControl(routeControl);
+    if (routeControl) {
+        map.removeControl(routeControl);
+        routeControl = null;
+    }
     document.getElementById('rpResult').classList.remove('open');
     document.getElementById('rpFrom').value = '';
     document.getElementById('rpTo').value = '';
     routePts = {From: null, To: null};
+    stopNavigation(true); // pass true to fully clean up
+}
+
+// ── NAVIGATION MODE ──
+function startNavigation() {
+    if (!routePts.From) return;
+    
+    // UI Transitions
+    document.getElementById('routePanel').classList.remove('open');
+    document.getElementById('navOverlay').classList.add('active');
+    document.querySelector('.topbar').classList.add('nav-hidden');
+    document.querySelector('.city-nav').classList.add('nav-hidden');
+    
+    isNavigating = true; // Engage auto-center
+    
+    // Map Focus
+    if (uLat && uLng && document.getElementById('rpFrom').value.includes('My Location')) {
+        map.flyTo([uLat, uLng], 18, { animate: true, duration: 1.5 });
+    } else {
+        map.flyTo([routePts.From.lat, routePts.From.lng], 18, { animate: true, duration: 1.5 });
+    }
+    
+    toast('Navigation started', 'ok');
+}
+
+function stopNavigation(fullClear = false) {
+    document.getElementById('navOverlay').classList.remove('active');
+    document.querySelector('.topbar').classList.remove('nav-hidden');
+    document.querySelector('.city-nav').classList.remove('nav-hidden');
+    
+    isNavigating = false; // Disengage auto-center
+
+    // Always clear the route line from the map
+    if (routeControl) { map.removeControl(routeControl); routeControl = null; }
+    
+    // Reset route panel state
+    document.getElementById('rpResult').classList.remove('open');
+    document.getElementById('rpFrom').value = '';
+    document.getElementById('rpTo').value = '';
+    routePts = {From: null, To: null};
+    
+    toast('Navigation ended', 'ok');
 }
 
 
@@ -407,8 +575,10 @@ window.jumpToCity = function(city) {
         'Hyderabad': [17.3850, 78.4867]
     };
     if(coords[city] && map) {
-        map.flyTo(coords[city], 13);
-        toast(`Moved to ${city}`, 'ok');
+        map.flyTo(coords[city], 13, { duration: 2, easeLinearity: 0.25 });
+        toast(`Switching context to ${city}`, 'ok');
+        // If searching is active, clear it
+        document.getElementById('searchInput').value = city;
     }
 }
 
@@ -463,7 +633,12 @@ function toggleRoute() {
   const btn = document.getElementById('routeBtn');
   const open = p.classList.toggle('open');
   btn.classList.toggle('active', open);
+  
+  // Prevent overlap
   document.getElementById('profilePanel').classList.remove('open');
+  document.getElementById('legend').style.opacity = open ? '0' : '1';
+  document.getElementById('sosBtn').style.opacity = open ? '0.4' : '1';
+  
   if (open && uLat) {
       document.getElementById('rpFrom').value = 'My Location';
       routePts.From = {lat: uLat, lng: uLng};

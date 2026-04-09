@@ -33,7 +33,7 @@ window.onerror = function(msg, url, line) {
 <!-- ── TOP BAR ── -->
 <div class="topbar">
   <button class="logo-btn" onclick="location.reload()">
-    <span style="color:var(--red);">📍</span> SafeWalk
+    <span style="color:var(--red);">📍</span><span class="hide-mob"> SafeWalk</span>
   </button>
   <div class="search-wrap">
     <span class="search-ico">🔍</span>
@@ -51,38 +51,88 @@ window.onerror = function(msg, url, line) {
 
 <div class="city-nav">
   <button class="city-btn" onclick="jumpToCity('Delhi')">Delhi</button>
-  <button class="city-btn" onclick="jumpToCity('Mumbai')">Mumbai</button>
-  <button class="city-btn" onclick="jumpToCity('Bangalore')">Bangalore</button>
-  <button class="city-btn" onclick="jumpToCity('Hyderabad')">Hyderabad</button>
+</div>
+
+<!-- ── PLACE DETAILS PANEL (Search Results) ── -->
+<div class="place-panel" id="placePanel">
+  <div class="place-drag" style="display:none;"></div>
+  <button class="place-close" onclick="closePlacePanel()">×</button>
+  
+  <!-- Image placeholder like Google Maps -->
+  <div class="place-img" id="placeImg"></div>
+  
+  <div class="place-body">
+    <div class="place-title" id="placeTitle">Location Name</div>
+    <div class="place-address" id="placeAddress">Loading address...</div>
+    
+    <div class="place-actions">
+      <button class="pl-action primary" style="background:#0D9E5C;color:white;border:none" onclick="routeToPlacePanel()">
+        <span class="pl-ico" style="color:white">🛡</span> Get Safe Route
+      </button>
+      <button class="pl-action">
+        <span class="pl-ico">🔖</span> Save
+      </button>
+      <button class="pl-action">
+        <span class="pl-ico">🔗</span> Share
+      </button>
+    </div>
+  </div>
 </div>
 
 <!-- ── ROUTE PANEL ── -->
 <div class="route-panel" id="routePanel">
+  <div class="rp-drag" style="display:none;"></div>
   <div class="rp-header">
-    <span class="rp-title">🛣 Plan Safe Route</span>
+    <div class="rp-title">🛣 Plan Safe Route</div>
     <button class="rp-close" onclick="toggleRoute()">×</button>
   </div>
-  <div class="rp-inputs">
-    <div class="rp-field">
-      <div class="rp-dot from"></div>
-      <input class="rp-input" id="rpFrom" placeholder="Starting point (or your location)" type="text"/>
-      <button class="rp-gps-btn" onclick="fillGPS('from')" title="Use my location">◎</button>
-      <div class="rp-s-results" id="rpFromResults"></div>
-    </div>
-    <div class="rp-connector" style="margin-left:15px;"></div>
-    <div class="rp-field">
-      <div class="rp-dot to"></div>
-      <input class="rp-input" id="rpTo" placeholder="Where are you going?" type="text"/>
-      <div class="rp-s-results" id="rpToResults"></div>
-    </div>
+  
+  <div class="rp-body">
+      <div class="rp-inputs">
+        <div class="rp-field">
+          <div class="rp-dot from"></div>
+          <input class="rp-input" id="rpFrom" placeholder="Starting point (or your location)" type="text"/>
+          <button class="rp-gps-btn" onclick="fillGPS('from')" title="Use my location">◎</button>
+          <div class="rp-s-results" id="rpFromResults"></div>
+        </div>
+        <div class="rp-connector"></div>
+        <div class="rp-field">
+          <div class="rp-dot to"></div>
+          <input class="rp-input" id="rpTo" placeholder="Where are you going?" type="text"/>
+          <div class="rp-s-results" id="rpToResults"></div>
+        </div>
+      </div>
+      
+      <button class="rp-go-btn" id="rpGoBtn" onclick="planRoute()">
+        <span>Get Safe Route</span>
+        <div class="rp-go-ico">→</div>
+      </button>
+
+      <div class="rp-result" id="rpResult">
+        <div class="rp-verdict" id="rpVerdict"></div>
+        
+        <div class="rp-res-btns">
+            <button class="rp-start-btn" id="startNavBtn" onclick="startNavigation()">Start Navigation</button>
+            <button class="rp-close-route" onclick="clearRoute()">Clear Route</button>
+        </div>
+        
+        <div class="rp-scroll-area">
+            <div class="rp-steps"  id="rpSteps"></div>
+            <div class="rp-danger-zones" id="rpDangerZones"></div>
+        </div>
+      </div>
   </div>
-  <button class="rp-go-btn" id="rpGoBtn" onclick="planRoute()">Get Safe Route</button>
-  <div class="rp-result" id="rpResult">
-    <button class="rp-close-route" onclick="clearRoute()">Clear Route</button>
-    <div class="rp-verdict" id="rpVerdict"></div>
-    <div class="rp-steps"  id="rpSteps"></div>
-    <div class="rp-danger-zones" id="rpDangerZones"></div>
-  </div>
+</div>
+
+<!-- ── NAVIGATION OVERLAY ── -->
+<div class="nav-overlay" id="navOverlay">
+    <div class="nav-header">
+        <div class="nav-status">SafeWalk Navigation Active</div>
+        <button class="nav-exit-btn" onclick="stopNavigation()">Exit</button>
+    </div>
+    <div class="nav-footer">
+        <div class="nav-instruction" id="navInstruction">Follow the blue line stay in safe zones.</div>
+    </div>
 </div>
 
 <!-- ── STREET INFO PANEL ── -->
@@ -161,7 +211,7 @@ window.onerror = function(msg, url, line) {
 </div>
 
 <!-- ── LEGEND ── -->
-<div class="legend">
+<div class="legend" id="legend">
   <div class="leg-title">Safety Score</div>
   <div class="leg-row"><span class="leg-dot" style="background:#D97706;"></span>Moderate (55–79)</div>
   <div class="leg-row"><span class="leg-dot" style="background:#DC4E12;"></span>Caution (30–54)</div>
