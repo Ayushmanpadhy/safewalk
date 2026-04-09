@@ -21,7 +21,7 @@ pool.getConnection()
   })
   .catch(err => {
     console.error('MySQL connection failed:', err.message);
-    process.exit(1);
+    console.error('The server will continue but database features will not work until MySQL is available.');
   });
 
 module.exports = pool;
