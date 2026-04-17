@@ -20,8 +20,8 @@ const register = async (req, res) => {
       [name, email, hashed, phone || null]
     );
 
-    const token = jwt.sign({ id: result.insertId }, process.env.JWT_SECRET, {
-      expiresIn: process.env.JWT_EXPIRES_IN
+    const token = jwt.sign({ id: result.insertId }, process.env.JWT_SECRET || 'fallback_safewalk_secret_123', {
+      expiresIn: process.env.JWT_EXPIRES_IN || '7d'
     });
 
     res.status(201).json({
@@ -53,8 +53,8 @@ const login = async (req, res) => {
     if (!match)
       return res.status(401).json({ error: 'Invalid credentials' });
 
-    const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, {
-      expiresIn: process.env.JWT_EXPIRES_IN
+    const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET || 'fallback_safewalk_secret_123', {
+      expiresIn: process.env.JWT_EXPIRES_IN || '7d'
     });
 
     res.json({

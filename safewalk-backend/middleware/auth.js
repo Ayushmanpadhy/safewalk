@@ -10,7 +10,7 @@ const protect = async (req, res, next) => {
       return res.status(401).json({ error: 'No token provided' });
 
     const token   = header.split(' ')[1];
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback_safewalk_secret_123');
 
     const [rows] = await db.query(
       'SELECT id, name, email, role, trust_score, is_active FROM users WHERE id = ?',
