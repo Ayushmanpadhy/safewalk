@@ -5,11 +5,15 @@ const multer  = require('multer');
 const path    = require('path');
 const { createReport, getReports, getReport, voteReport } = require('../controllers/reportsController');
 const { protect } = require('../middleware/auth');
+const fs = require('fs');
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    // dynamically resolve the absolute path to the backend 'uploads' directory
-    cb(null, path.join(__dirname, '../uploads'));
+    const uploadDir = path.join(__dirname, '../uploads');
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    cb(null, uploadDir);
   },
   filename:    (req, file, cb) => cb(null, `${Date.now()}-${file.originalname}`)
 });
