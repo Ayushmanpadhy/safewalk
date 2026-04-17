@@ -102,6 +102,23 @@ async function run() {
   try { await conn.query(`ALTER TABLE users ADD COLUMN is_active BOOLEAN DEFAULT true`); } catch(e) {}
   try { await conn.query(`ALTER TABLE users MODIFY COLUMN role ENUM('user','admin','authority') DEFAULT 'user'`); } catch(e) {}
 
+  // ── FORCIBLY SEED ADMIN ACCOUNTS ─────────────────────────────────────────────
+  console.log('[migrate] Ensuring Admin & Police HQ accounts exist...');
+  try {
+    await conn.query(`
+      INSERT INTO users (name, email, password, role, trust_score, is_verified, is_active) 
+      VALUES 
+      ('Admin', 'admin@safewalk.com', '$2a$10$p7W7d6WGpSIqlR6W.gayju4FJoH2D16YphKF1LZbMOb9nQ2V6jOhS', 'admin', 2.0, TRUE, TRUE),
+      ('Police HQ', 'police@safewalk.com', '$2a$10$p7W7d6WGpSIqlR6W.gayju4FJoH2D16YphKF1LZbMOb9nQ2V6jOhS', 'authority', 2.0, TRUE, TRUE)
+      ON DUPLICATE KEY UPDATE 
+      password = '$2a$10$p7W7d6WGpSIqlR6W.gayju4FJoH2D16YphKF1LZbMOb9nQ2V6jOhS',
+      role = VALUES(role);
+    `);
+    console.log('[migrate] Admin accounts injected successfully.');
+  } catch (err) {
+    console.warn('[migrate] Failed to inject admin accounts:', err.message);
+  }
+
   // ── CHECK IF DATA ALREADY SEEDED ─────────────────────────────────────────────
   const [rows] = await conn.query(`SELECT COUNT(*) as cnt FROM street_safety_scores`);
   if (rows[0].cnt > 0) {
