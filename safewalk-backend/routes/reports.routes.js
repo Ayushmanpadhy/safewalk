@@ -7,7 +7,10 @@ const { createReport, getReports, getReport, voteReport } = require('../controll
 const { protect } = require('../middleware/auth');
 
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, 'D:\\SAFEWALK\\safewalk-backend\\uploads'),
+  destination: (req, file, cb) => {
+    // dynamically resolve the absolute path to the backend 'uploads' directory
+    cb(null, path.join(__dirname, '../uploads'));
+  },
   filename:    (req, file, cb) => cb(null, `${Date.now()}-${file.originalname}`)
 });
 const upload = multer({
