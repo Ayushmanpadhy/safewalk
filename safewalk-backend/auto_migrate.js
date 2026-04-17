@@ -88,7 +88,7 @@ async function run() {
       lng DOUBLE,
       message TEXT,
       resolved BOOLEAN DEFAULT false,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      triggered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
     )
   `);
@@ -96,7 +96,8 @@ async function run() {
   console.log('[migrate] Schema ready.');
 
   // Proactive Patching for existing tables
-  console.log('[migrate] Checking for missing columns...');
+  console.log('[migrate] Checking for missing columns and renaming...');
+  try { await conn.query(`ALTER TABLE sos_alerts CHANGE created_at triggered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP`); } catch(e) {}
   try { await conn.query(`ALTER TABLE users ADD COLUMN phone VARCHAR(20)`); } catch(e) {}
   try { await conn.query(`ALTER TABLE users ADD COLUMN emergency_contacts JSON DEFAULT NULL`); } catch(e) {}
   try { await conn.query(`ALTER TABLE users ADD COLUMN is_active BOOLEAN DEFAULT true`); } catch(e) {}
