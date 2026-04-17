@@ -66,8 +66,11 @@ async function run() {
       photo_url VARCHAR(500),
       anonymous BOOLEAN DEFAULT false,
       resolved BOOLEAN DEFAULT false,
+      resolved_by INT DEFAULT NULL,
+      resolved_at TIMESTAMP DEFAULT NULL,
       reported_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
+      FOREIGN KEY (resolved_by) REFERENCES users(id) ON DELETE SET NULL
     )
   `);
 
@@ -98,6 +101,8 @@ async function run() {
   // Proactive Patching for existing tables
   console.log('[migrate] Checking for missing columns and renaming...');
   try { await conn.query(`ALTER TABLE sos_alerts CHANGE created_at triggered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP`); } catch(e) {}
+  try { await conn.query(`ALTER TABLE reports ADD COLUMN resolved_by INT`); } catch(e) {}
+  try { await conn.query(`ALTER TABLE reports ADD COLUMN resolved_at TIMESTAMP NULL DEFAULT NULL`); } catch(e) {}
   try { await conn.query(`ALTER TABLE users ADD COLUMN phone VARCHAR(20)`); } catch(e) {}
   try { await conn.query(`ALTER TABLE users ADD COLUMN emergency_contacts JSON DEFAULT NULL`); } catch(e) {}
   try { await conn.query(`ALTER TABLE users ADD COLUMN is_active BOOLEAN DEFAULT true`); } catch(e) {}
